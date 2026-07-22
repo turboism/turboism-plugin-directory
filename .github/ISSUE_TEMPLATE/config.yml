@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/turboism/turboism-plugin-directory/security/advisories/new
+    about: Report suspected malicious plugins or exploitable security issues privately.

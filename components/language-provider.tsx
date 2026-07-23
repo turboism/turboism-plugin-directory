@@ -8,6 +8,8 @@ type Copy = {
   product: string;
   docs: string;
   plugins: string;
+  learn: string;
+  chat: string;
   github: string;
   nominate: string;
   search: string;
@@ -16,8 +18,8 @@ type Copy = {
 };
 
 const copy: Record<Language, Copy> = {
-  en: { product: "Product", docs: "Docs", plugins: "Plugins", github: "GitHub", nominate: "Nominate a plugin", search: "Search plugins", all: "All plugins", language: "中文" },
-  zh: { product: "产品", docs: "文档", plugins: "插件", github: "GitHub", nominate: "提名插件", search: "搜索插件", all: "全部插件", language: "EN" },
+  en: { product: "Product", docs: "Docs", plugins: "Plugins", learn: "Learn", chat: "Chat", github: "GitHub", nominate: "Nominate a plugin", search: "Search plugins", all: "All plugins", language: "中文" },
+  zh: { product: "产品", docs: "文档", plugins: "插件", learn: "学习", chat: "聊天", github: "GitHub", nominate: "提名插件", search: "搜索插件", all: "全部插件", language: "EN" },
 };
 
 const LanguageContext = createContext<{

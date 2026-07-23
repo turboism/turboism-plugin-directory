@@ -9,6 +9,8 @@ const networks = [
   { key: "product", href: "https://www.turboism.dev" },
   { key: "docs", href: "https://docs.turboism.dev" },
   { key: "plugins", href: "https://plugin.turboism.dev" },
+  { key: "learn", href: "https://learn.turboism.dev" },
+  { key: "chat", href: "https://chat.turboism.dev" },
   { key: "github", href: "https://github.com/turboism" },
 ] as const;
 
@@ -25,7 +27,7 @@ export function SiteHeader() {
         </Link>
         <nav className="network-nav" aria-label="Turboism network">
           {networks.map((network) => (
-            <a className={network.key === "plugins" ? "is-active" : undefined} href={network.href} key={network.key} target={network.key === "plugins" ? undefined : "_blank"} rel={network.key === "plugins" ? undefined : "noreferrer"}>
+            <a className={network.key === "plugins" ? "is-active" : undefined} href={network.href} key={network.key} target={network.key === "github" ? "_blank" : undefined} rel={network.key === "github" ? "noreferrer" : undefined}>
               {copy[network.key]}
             </a>
           ))}
@@ -36,7 +38,7 @@ export function SiteHeader() {
           <button className="icon-button" onClick={() => setOpen(!open)} type="button" aria-expanded={open} aria-label="Toggle navigation">{open ? <X size={18} /> : <Menu size={18} />}</button>
         </div>
       </div>
-      {open && <nav className="mobile-network-nav" aria-label="Turboism network">{networks.map((network) => <a href={network.href} key={network.key} target={network.key === "plugins" ? undefined : "_blank"} rel="noreferrer">{copy[network.key]}</a>)}</nav>}
+      {open && <nav className="mobile-network-nav" aria-label="Turboism network">{networks.map((network) => <a href={network.href} key={network.key} target={network.key === "github" ? "_blank" : undefined} rel={network.key === "github" ? "noreferrer" : undefined}>{copy[network.key]}</a>)}</nav>}
     </header>
   );
 }

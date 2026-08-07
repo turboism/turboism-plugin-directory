@@ -15,5 +15,16 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}><body><LanguageProvider><div className="background-grid" aria-hidden="true" /><SiteHeader />{children}<SiteFooter /></LanguageProvider></body></html>;
+  return (
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className="relative flex min-h-full flex-col bg-white overflow-x-hidden">
+        <LanguageProvider>
+          <div className="sacred-texture" aria-hidden="true" />
+          <SiteHeader />
+          <main className="flex-1 relative z-10">{children}</main>
+          <SiteFooter />
+        </LanguageProvider>
+      </body>
+    </html>
+  );
 }

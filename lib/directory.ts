@@ -1,3 +1,5 @@
+import directoryJson from "./directory.json";
+
 export type PluginTrust = "official" | "reviewed-third-party";
 export type VerificationState = "verified" | "pending-current-version" | "withdrawn";
 
@@ -21,6 +23,6 @@ export interface PluginEntry {
 }
 
 // Entries are intentionally empty at launch. Add only a Git-reviewed, qualifying release.
-export const plugins: PluginEntry[] = [];
+export const plugins: PluginEntry[] = directoryJson.plugins;
 
 export const availableTags = [...new Set(plugins.flatMap((plugin) => plugin.tags))].sort();

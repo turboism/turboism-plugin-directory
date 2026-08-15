@@ -146,3 +146,28 @@ test("malformed signature input never throws", () => {
     assert.ok(!verified.ok, `expected rejection for ${bad.slice(0, 40)}`);
   }
 });
+
+test("duplicate envelope keys and fatal UTF-8 reject before any signature work", () => {
+  const keys = makeKeyPair();
+  const signed = signCatalogBytes(catalogBytes, keys.privateKey, "turboism-test-v2");
+  const envelopeJson = stringifyCanonical(signed.envelope, "envelope");
+  const dup = envelopeJson.replace('"keyId":"turboism-test-v2"', '"keyId":"turboism-test-v2","keyId":"turboism-test-v2"');
+  const dupCheck = verifyCatalogBytes(catalogBytes, Buffer.from(dup), makeAllowlist("turboism-test-v2", keys.publicKey));
+  assert.ok(!dupCheck.ok);
+  assert.ok(dupCheck.errors.some((issue) => issue.message.includes("duplicate object key")));
+  const badUtf8 = Buffer.concat([Buffer.from(envelopeJson, "utf8").subarray(0, 10), Buffer.from([0xc3, 0x28])]);
+  const utf8Check = verifyCatalogBytes(catalogBytes, badUtf8, makeAllowlist("turboism-test-v2", keys.publicKey));
+  assert.ok(!utf8Check.ok);
+});
+
+test("oversized catalog input fails closed without throwing (normative order: envelope first)", () => {
+  const junk = Buffer.alloc(5 * 1024 * 1024 + 1, 0x61);
+  const envelopeBytes2 = Buffer.from(stringifyCanonical(signCatalogBytes(catalogBytes, makeKeyPair().privateKey, "turboism-test-v2").envelope, "envelope"));
+  // Envelope validation runs first, so the unknown-key error surfaces; the
+  // catalog cap itself is enforced in validateCatalogBytes before any parse
+  // (covered in validate.test.mjs). Either way it must fail closed.
+  const check = verifyCatalogBytes(junk, envelopeBytes2, {});
+  assert.ok(!check.ok);
+  const withKeys = verifyCatalogBytes(junk, envelopeBytes2, makeAllowlist("turboism-test-v2", makeKeyPair().publicKey));
+  assert.ok(!withKeys.ok);
+});

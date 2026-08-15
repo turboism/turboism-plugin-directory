@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -15,7 +15,8 @@ import {
   serveSearch,
 } from "../../lib/catalog-v2/http.mjs";
 import { verifyCatalogBytes } from "../../lib/catalog-v2/catalog.mjs";
-import { deployPair, makePlugin, makeRelease } from "./fixtures.mjs";
+import { deployPair, makeCatalog, makeKeyPair, makePlugin, makeRelease } from "./fixtures.mjs";
+import { stringifyCanonical } from "../../lib/catalog-v2/catalog.mjs";
 
 const BASE = "https://plugin.turboism.dev";
 
@@ -91,7 +92,7 @@ test("signature endpoint serves exact envelope bytes", async () => {
     const response = serveSignature(request("/api/v2/catalog.json.sig"), storage);
     assert.equal(response.status, 200);
     const body = Buffer.from(await response.arrayBuffer());
-    assert.equal(body.toString("utf8"), readFileSync(path.join(dir, "catalog.json.sig"), "utf8"));
+    assert.equal(body.toString("utf8"), readFileSync(path.join(dir, "generations", "00000001", "catalog.json.sig"), "utf8"));
     assert.equal(response.headers.get("content-type"), SIGNATURE_CONTENT_TYPE);
     assert.equal(response.headers.get("cache-control"), CATALOG_CACHE_CONTROL);
     assert.ok(response.headers.get("etag"));
@@ -226,7 +227,7 @@ test("tampered deployed catalog fails closed with 500 catalog_invalid", async ()
   const dir = tempDir();
   try {
     deployPair(dir);
-    const catalogFile = path.join(dir, "catalog.json");
+    const catalogFile = path.join(dir, "generations", "00000001", "catalog.json");
     const bytes = Buffer.from(readFileSync(catalogFile, "utf8"));
     bytes[bytes.length - 1] = bytes[bytes.length - 1] === 0x7d ? 0x7e : 0x7d;
     writeFileSync(catalogFile, bytes);
@@ -307,6 +308,196 @@ test("catalog key order in deployed bytes is canonical and deterministic", async
     assert.equal(first.catalogBytes.toString("utf8"), second.catalogBytes.toString("utf8"));
     const parsed = JSON.parse(first.catalogBytes.toString("utf8"));
     assert.deepEqual(Object.keys(parsed), ["format", "schemaVersion", "catalogVersion", "publishedAt", "plugins"]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("hostile CATALOG_V2_* environment variables are NEVER consulted by routes", async () => {
+  const provisionedDir = tempDir();
+  const emptyDir = tempDir();
+  try {
+    deployPair(provisionedDir);
+    const previousStorage = process.env.CATALOG_V2_STORAGE_DIR;
+    const previousKeys = process.env.CATALOG_V2_TRUSTED_KEYS_FILE;
+    process.env.CATALOG_V2_STORAGE_DIR = provisionedDir;
+    process.env.CATALOG_V2_TRUSTED_KEYS_FILE = path.join(provisionedDir, "trusted-keys.json");
+    try {
+      // Default storage (no injected object) must ignore the hostile env and
+      // read the real production root: an empty dir fails closed with 503.
+      const response = serveCatalog(request("/api/v2/catalog.json"));
+      assert.equal(response.status, 503);
+      const envelope = JSON.parse(await response.text());
+      assert.equal(envelope.error.code, "catalog_unavailable");
+      const search = serveSearch(request("/api/v2/plugins"));
+      assert.equal(search.status, 503);
+    } finally {
+      if (previousStorage === undefined) delete process.env.CATALOG_V2_STORAGE_DIR;
+      else process.env.CATALOG_V2_STORAGE_DIR = previousStorage;
+      if (previousKeys === undefined) delete process.env.CATALOG_V2_TRUSTED_KEYS_FILE;
+      else process.env.CATALOG_V2_TRUSTED_KEYS_FILE = previousKeys;
+    }
+  } finally {
+    rmSync(provisionedDir, { recursive: true, force: true });
+    rmSync(emptyDir, { recursive: true, force: true });
+  }
+});
+
+test("HEAD mirrors GET for error responses: same status, Content-Length, no body", async () => {
+  const dir = tempDir();
+  try {
+    // 503: unprovisioned storage.
+    const storage = storageFor(dir);
+    const get = serveCatalog(request("/api/v2/catalog.json"), storage);
+    assert.equal(get.status, 503);
+    const getBody = await get.text();
+    const head = serveCatalog(request("/api/v2/catalog.json", { method: "HEAD" }), storage, true);
+    assert.equal(head.status, 503);
+    assert.equal((await head.arrayBuffer()).byteLength, 0);
+    assert.equal(head.headers.get("content-length"), String(Buffer.byteLength(getBody)));
+    // 400: provisioned storage with an invalid query.
+    deployPair(dir);
+    const getSearch = serveSearch(request("/api/v2/plugins?unknown=1"), storage);
+    assert.equal(getSearch.status, 400);
+    const headSearch = serveSearch(request("/api/v2/plugins?unknown=1", { method: "HEAD" }), storage, true);
+    assert.equal(headSearch.status, 400);
+    assert.equal(headSearch.headers.get("content-length"), String(Buffer.byteLength(await getSearch.text())));
+    // 500: provisioned storage with a tampered catalog.
+    const catalogFile = path.join(dir, "generations", "00000001", "catalog.json");
+    const bytes = Buffer.from(readFileSync(catalogFile, "utf8"));
+    bytes[bytes.length - 1] = bytes[bytes.length - 1] === 0x7d ? 0x7e : 0x7d;
+    writeFileSync(catalogFile, bytes);
+    const getBroken = serveCatalog(request("/api/v2/catalog.json"), storage);
+    assert.equal(getBroken.status, 500);
+    const headBroken = serveCatalog(request("/api/v2/catalog.json", { method: "HEAD" }), storage, true);
+    assert.equal(headBroken.status, 500);
+    assert.equal(headBroken.headers.get("content-length"), String(Buffer.byteLength(await getBroken.text())));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("Accept negotiation honors q=0, malformed qvalues, and requires vendor version=2", async () => {
+  const dir = tempDir();
+  try {
+    deployPair(dir);
+    const storage = storageFor(dir);
+    const cases = [
+      [{ Accept: "application/vnd.turboism.plugin-catalog+json;version=2;q=0" }, 406],
+      [{ Accept: "application/json;q=0" }, 406],
+      [{ Accept: "*/*;q=0" }, 406],
+      [{ Accept: "application/*;q=0" }, 406],
+      [{ Accept: "application/json;q=banana" }, 406],
+      [{ Accept: "application/json;q=0.5" }, 200],
+      [{ Accept: "application/vnd.turboism.plugin-catalog+json" }, 406], // vendor type requires version=2
+      [{ Accept: "application/vnd.turboism.plugin-catalog+json;version=2;q=0.5" }, 200],
+      [{ Accept: "text/html, application/json;q=0.8" }, 200],
+      [{ Accept: "application/json;q=0, */*;q=0" }, 406],
+      [{ Accept: "application/json; version=2" }, 200], // irrelevant params on generic types are fine
+      [{ Accept: "application/json;q=1.000" }, 200],
+      [{ Accept: "application/json;q=0.000" }, 406],
+      [{ Accept: "application/vnd.turboism.plugin-catalog+json;version=1" }, 406],
+      [{ Accept: "application/vnd.turboism.plugin-catalog+json;version=2;version=2" }, 406], // duplicate param
+      [{ Accept: "application/vnd.turboism.plugin-catalog+json;version" }, 406], // missing value
+      [{ Accept: "broken" }, 406],
+    ];
+    for (const [headers, expected] of cases) {
+      const response = serveCatalog(request("/api/v2/catalog.json", { headers }), storage);
+      assert.equal(response.status, expected, JSON.stringify(headers));
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("generation pointer: missing, torn, escaping, and symlinked pointers fail closed", async () => {
+  const dir = tempDir();
+  try {
+    const { commitPointer, loadCurrentGeneration, POINTER_FILE } = await import("../../lib/catalog-v2/storage.mjs");
+    deployPair(dir);
+    const storage = storageFor(dir);
+    assert.equal(serveCatalog(request("/api/v2/catalog.json"), storage).status, 200);
+    // Missing pointer -> 503.
+    rmSync(path.join(dir, POINTER_FILE));
+    assert.equal(serveCatalog(request("/api/v2/catalog.json"), storage).status, 503);
+    // Torn pointer (garbage) -> 503.
+    writeFileSync(path.join(dir, POINTER_FILE), "00000002x!");
+    assert.equal(serveCatalog(request("/api/v2/catalog.json"), storage).status, 503);
+    assert.equal(loadCurrentGeneration(dir).ok, false);
+    // Escaping pointer -> 503 (traversal is rejected by the id grammar).
+    writeFileSync(path.join(dir, POINTER_FILE), "../escape");
+    assert.equal(serveCatalog(request("/api/v2/catalog.json"), storage).status, 503);
+    // Pointer to a missing generation -> 503.
+    writeFileSync(path.join(dir, POINTER_FILE), "00000099");
+    assert.equal(serveCatalog(request("/api/v2/catalog.json"), storage).status, 503);
+    // Pointer whose generation directory is a symlink -> 503 (symlink escape).
+    const outside = tempDir();
+    try {
+      writeFileSync(path.join(dir, POINTER_FILE), "00000007");
+      symlinkSync(outside, path.join(dir, "generations", "00000007"));
+      const response = serveCatalog(request("/api/v2/catalog.json"), storage);
+      assert.equal(response.status, 503);
+      const envelope = JSON.parse(await response.text());
+      assert.equal(envelope.error.code, "catalog_unavailable");
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+    // Restore a valid pointer for subsequent assertions.
+    const restored = commitPointer(dir, "00000001");
+    assert.ok(restored.ok);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("replacement and rollback: the pointer is the single atomic switch", async () => {
+  const dir = tempDir();
+  try {
+    const { commitPointer, stageGeneration } = await import("../../lib/catalog-v2/storage.mjs");
+    const first = deployPair(dir);
+    const storage = storageFor(dir);
+    const firstResponse = serveCatalog(request("/api/v2/catalog.json"), storage);
+    const firstBody = Buffer.from(await firstResponse.arrayBuffer());
+    assert.ok(firstBody.equals(first.catalogBytes));
+    // Publish a second generation with different bytes, signed with its own
+    // key id; both keys stay in the allowlist so each generation verifies.
+    const secondCatalog = makeCatalog({ catalogVersion: 2 });
+    const secondBytes = Buffer.from(stringifyCanonical(secondCatalog, "catalog"));
+    const secondKeys = makeKeyPair();
+    const { signCatalogBytes } = await import("../../lib/catalog-v2/catalog.mjs");
+    const signed = signCatalogBytes(secondBytes, secondKeys.privateKey, "turboism-test-v2-b");
+    assert.ok(signed.ok);
+    const secondSig = Buffer.from(stringifyCanonical(signed.envelope, "envelope"), "utf8");
+    const combinedAllowlist = { ...first.allowlist, "turboism-test-v2-b": { pem: secondKeys.publicKey, purpose: "production" } };
+    writeFileSync(path.join(dir, "trusted-keys.json"), JSON.stringify(combinedAllowlist));
+    const staged = stageGeneration(dir, "00000002", secondBytes, secondSig);
+    assert.ok(staged.ok);
+    // Fault injection: the pointer was NOT committed; the old generation is served.
+    const stillOld = serveCatalog(request("/api/v2/catalog.json"), storage);
+    assert.ok(Buffer.from(await stillOld.arrayBuffer()).equals(first.catalogBytes));
+    // Commit the pointer: the new generation is served atomically.
+    assert.ok(commitPointer(dir, "00000002").ok);
+    const nowNew = serveCatalog(request("/api/v2/catalog.json"), storage);
+    const newBody = Buffer.from(await nowNew.arrayBuffer());
+    assert.ok(newBody.equals(secondBytes));
+    assert.equal(JSON.parse(newBody.toString("utf8")).catalogVersion, 2);
+    // Rollback: point back at generation 1; the old pair is served again.
+    assert.ok(commitPointer(dir, "00000001").ok);
+    const rolledBack = serveCatalog(request("/api/v2/catalog.json"), storage);
+    assert.ok(Buffer.from(await rolledBack.arrayBuffer()).equals(first.catalogBytes));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("publish staging refuses to overwrite an existing generation", async () => {
+  const dir = tempDir();
+  try {
+    const { stageGeneration } = await import("../../lib/catalog-v2/storage.mjs");
+    deployPair(dir);
+    const staged = stageGeneration(dir, "00000001", Buffer.from("x"), Buffer.from("y"));
+    assert.ok(!staged.ok);
+    assert.ok(staged.message.includes("already exists"));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

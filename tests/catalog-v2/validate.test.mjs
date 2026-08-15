@@ -5,10 +5,15 @@ import {
   MAX_CATALOG_BYTES,
   MAX_SIGNATURE_BYTES,
   OFFICIAL_CATEGORIES,
+  loadTrustedKeys,
   validateCatalogBytes,
   validateEnvelopeBytes,
+  validateParsedCatalog,
 } from "../../lib/catalog-v2/catalog.mjs";
-import { makeCatalog, makePlugin, makeRelease } from "./fixtures.mjs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { makeCatalog, makeKeyPair, makePlugin, makeRelease } from "./fixtures.mjs";
 
 const ok = (bytes) => {
   const result = validateCatalogBytes(bytes);
@@ -121,14 +126,15 @@ test("catalog body cap: 5 MiB", () => {
   assert.ok(errors.some((issue) => issue.message.includes("at most")));
 });
 
-test("plugin count cap: 10,000", () => {
+test("plugin count cap: 10,000 (unreachable through bytes; checked on the parsed object)", () => {
   const plugin = makePlugin();
   const plugins = [];
   for (let i = 0; i < 10001; i += 1) {
     plugins.push(plugin);
   }
-  const errors = invalid(Buffer.from(JSON.stringify(makeCatalog({ plugins }))));
-  assert.ok(errors.some((issue) => issue.message.includes("between 0 and 10000 items")));
+  const errors = validateParsedCatalog(makeCatalog({ plugins }));
+  assert.ok(!errors.ok);
+  assert.ok(errors.errors.some((issue) => issue.message.includes("between 0 and 10000 items")));
 });
 
 test("release count cap: 100 per plugin", () => {
@@ -140,9 +146,9 @@ test("release count cap: 100 per plugin", () => {
   assert.ok(errors.some((issue) => issue.message.includes("between 1 and 100 items")));
 });
 
-test("tag bounds: count, length, duplicate, grammar", () => {
+test("tag bounds: count, length, duplicate, grammar; empty tags are valid", () => {
+  ok(Buffer.from(JSON.stringify(makeCatalog({ plugins: [makePlugin({ releases: [makeRelease({ tags: [] })] })] }))));
   const tagCases = [
-    { tags: [] },
     { tags: ["a"] },
     { tags: ["x".repeat(33)] },
     { tags: ["project", "project"] },
@@ -249,4 +255,86 @@ test("signature envelope: unknown fields and bad signature bytes reject", () => 
   assert.ok(!validateEnvelopeBytes(Buffer.from(JSON.stringify(badSignature))).ok);
   const badKeyId = { ...valid, keyId: "Turboism!" };
   assert.ok(!validateEnvelopeBytes(Buffer.from(JSON.stringify(badKeyId))).ok);
+});
+
+test("strict JSON: duplicate object keys reject at every nesting level", () => {
+  const catalog = makeCatalog();
+  const duplicated = `{"format":"turboism.plugin.catalog","format":"turboism.plugin.catalog",${JSON.stringify(catalog).slice(1)}`;
+  const errors = invalid(Buffer.from(duplicated));
+  assert.ok(errors.some((issue) => issue.message.includes("duplicate object key")));
+  // Inject a duplicate key at the byte level (JSON.parse would collapse it).
+  const withDupVersion = JSON.stringify(makeCatalog()).replace('"version":"0.1.0"', '"version":"0.1.0","version":"0.1.0"');
+  const dupErrors = invalid(Buffer.from(withDupVersion));
+  assert.ok(dupErrors.some((issue) => issue.message.includes("duplicate object key")));
+  const valid = { format: "turboism.plugin.catalog.signature", schemaVersion: 2, algorithm: "Ed25519", keyId: "turboism-official-v1", catalogSha256: "0".repeat(64), signature: Buffer.alloc(64).toString("base64") };
+  const dupEnvelope = `{"format":"turboism.plugin.catalog.signature","format":"turboism.plugin.catalog.signature",${JSON.stringify(valid).slice(1)}`;
+  const envelopeCheck = validateEnvelopeBytes(Buffer.from(dupEnvelope));
+  assert.ok(!envelopeCheck.ok);
+  assert.ok(envelopeCheck.errors.some((issue) => issue.message.includes("duplicate object key")));
+});
+
+test("fatal UTF-8: invalid byte sequences reject instead of being replaced", () => {
+  const catalog = makeCatalog();
+  const bytes = Buffer.from(JSON.stringify(catalog), "utf8");
+  const corrupted = Buffer.concat([bytes.subarray(0, 40), Buffer.from([0xc3, 0x28]), bytes.subarray(40)]);
+  const errors = invalid(corrupted);
+  assert.ok(errors.some((issue) => issue.message.includes("valid UTF-8")));
+  const envelope = Buffer.from('{"format":"turboism.plugin.catalog.signature","schemaVersion":2,"algorithm":"Ed25519","keyId":"a","catalogSha256":"' + "0".repeat(64) + '","signature":"' + Buffer.alloc(64).toString("base64") + '"}');
+  const badEnvelope = Buffer.concat([envelope.subarray(0, 20), Buffer.from([0xff]), envelope.subarray(20)]);
+  const envelopeCheck = validateEnvelopeBytes(badEnvelope);
+  assert.ok(!envelopeCheck.ok);
+});
+
+test("caps are enforced BEFORE parsing: oversized non-JSON reports the cap", () => {
+  const junk = Buffer.alloc(MAX_CATALOG_BYTES + 1, 0x61);
+  const errors = invalid(junk);
+  assert.ok(errors.some((issue) => issue.message.includes("at most")));
+});
+
+test("artifact URL must be an exact GitHub releases download URL matching fileName", () => {
+  const base = makeRelease().artifact;
+  const cases = [
+    { url: "https://example.com/turboism/turboism-releases/releases/download/v0.1.0/plugin.jar" },
+    { url: "https://github.com/turboism/turboism-releases/releases/tag/v0.1.0" },
+    { url: "https://github.com/turboism/turboism-releases/releases/download/v0.1.0/plugin.zip" },
+    { url: "https://github.com/turboism/turboism-releases/releases/download/v0.1.0/other.jar" },
+    { url: "https://github.com/turboism/turboism-releases/releases/download/v0.1.0/plugin.jar?download=1" },
+    { url: "https://github.com/turboism/turboism-releases/releases/download/v0.1.0/plugin.jar#frag" },
+    { url: "https://user:pass@github.com/turboism/turboism-releases/releases/download/v0.1.0/plugin.jar" },
+    { url: "http://github.com/turboism/turboism-releases/releases/download/v0.1.0/plugin.jar" },
+  ];
+  for (const artifact of cases) {
+    const errors = invalid(Buffer.from(JSON.stringify(makeCatalog({ plugins: [makePlugin({ releases: [makeRelease({ artifact: { ...base, ...artifact } })] })] }))));
+    assert.ok(errors.length > 0, `expected rejection for ${artifact.url}`);
+  }
+  // Matching fileName in the URL is required and accepted.
+  ok(Buffer.from(JSON.stringify(makeCatalog({ plugins: [makePlugin({ releases: [makeRelease({ artifact: { ...base, fileName: "plugin.jar", url: "https://github.com/turboism/turboism-releases/releases/download/v0.1.0/plugin.jar" } })] })] }))));
+});
+
+test("trusted-keys manifest: mandatory purpose, bounds, duplicate keys, and strict JSON", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "catalog-v2-keys-"));
+  try {
+    const publicKey = makeKeyPair().publicKey;
+    const write = (name, content) => writeFileSync(path.join(dir, name), content);
+    // Missing purpose is rejected (never defaults to production).
+    write("no-purpose.json", JSON.stringify({ "turboism-test-v2": { pem: publicKey } }));
+    assert.ok(!loadTrustedKeys(path.join(dir, "no-purpose.json")).ok);
+    // Explicit test purpose is accepted.
+    write("test-purpose.json", JSON.stringify({ "turboism-test-v2": { pem: publicKey, purpose: "test" } }));
+    assert.ok(loadTrustedKeys(path.join(dir, "test-purpose.json")).ok);
+    // Duplicate keys reject.
+    write("dup.json", `{"turboism-test-v2":${JSON.stringify({ pem: publicKey, purpose: "test" })},\n"turboism-test-v2":${JSON.stringify({ pem: publicKey, purpose: "test" })}}`);
+    assert.ok(!loadTrustedKeys(path.join(dir, "dup.json")).ok);
+    // Invalid purpose rejects.
+    write("bad-purpose.json", JSON.stringify({ "turboism-test-v2": { pem: publicKey, purpose: "preview" } }));
+    assert.ok(!loadTrustedKeys(path.join(dir, "bad-purpose.json")).ok);
+    // Invalid key id rejects.
+    write("bad-id.json", JSON.stringify({ "Turboism!": { pem: publicKey, purpose: "test" } }));
+    assert.ok(!loadTrustedKeys(path.join(dir, "bad-id.json")).ok);
+    // Non-JSON rejects.
+    write("junk.json", "not json");
+    assert.ok(!loadTrustedKeys(path.join(dir, "junk.json")).ok);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

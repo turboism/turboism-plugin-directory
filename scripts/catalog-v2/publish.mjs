@@ -10,7 +10,12 @@
 //   4. sign the exact staged bytes with an Ed25519 private key;
 //   5. verify the exact staged bytes against the trusted-keys allowlist
 //      (production purpose only);
-//   6. atomically publish the catalog/signature pair (tmp files, then rename).
+//   6. stage BOTH exact bytes into a fresh immutable generation directory and
+//      verify them on disk;
+//   7. commit the current pointer with ONE atomic rename.
+//
+// A fault before the pointer commit leaves the previously committed
+// generation served; a mixed or partial pair can never become current.
 //
 // Usage:
 //   node scripts/catalog-v2/publish.mjs \
@@ -24,9 +29,9 @@
 //
 // The manifest maps "<pluginId>@<version>" to a local .jar path. Only .jar
 // inputs are accepted (no .tplugin, no ZIP store input). Nothing is written
-// to `--out` unless every stage passes; a torn or unverifiable pair is never
-// published. The private key never enters this repository.
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+// to `--out` unless every stage passes. The private key never enters this
+// repository.
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
   checkJarBinding,
@@ -36,6 +41,7 @@ import {
   validateCatalogBytes,
   verifyCatalogBytes,
 } from "../../lib/catalog-v2/catalog.mjs";
+import { commitPointer, nextGenerationId, stageGeneration } from "../../lib/catalog-v2/storage.mjs";
 
 const args = process.argv.slice(2);
 const argValue = (name) => {
@@ -139,14 +145,19 @@ if (dryRun) {
   process.exit(0);
 }
 
-// Stage 6: atomic publish — tmp files first, then rename; no partial pair.
-mkdirSync(outDir, { recursive: true });
-const catalogFile = path.join(outDir, "catalog.json");
-const sigFile = path.join(outDir, "catalog.json.sig");
-const catalogTmp = `${catalogFile}.tmp`;
-const sigTmp = `${sigFile}.tmp`;
-writeFileSync(catalogTmp, canonicalBytes, "utf8");
-writeFileSync(sigTmp, envelopeBytes, "utf8");
-renameSync(sigTmp, sigFile);
-renameSync(catalogTmp, catalogFile);
-console.log(`published pair -> ${catalogFile} (${canonicalBytes.length} bytes) and ${sigFile} (${envelopeBytes.length} bytes)`);
+// Stage 6+7: stage the immutable generation, then commit the pointer once.
+const next = nextGenerationId(outDir);
+if (!next.ok) {
+  fail("staging", next.message);
+}
+const staged = stageGeneration(outDir, next.id, Buffer.from(canonicalBytes, "utf8"), Buffer.from(envelopeBytes, "utf8"));
+if (!staged.ok) {
+  fail("staging", staged.message);
+}
+const committed = commitPointer(outDir, next.id);
+if (!committed.ok) {
+  fail("pointer", committed.message);
+}
+console.log(
+  `published generation ${next.id} -> ${path.join(outDir, "generations", next.id)} (${canonicalBytes.length} catalog bytes, ${envelopeBytes.length} signature bytes); pointer committed`,
+);

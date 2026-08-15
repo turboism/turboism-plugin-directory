@@ -7,6 +7,7 @@ import { crc32, deflateRawSync } from "node:zlib";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { signCatalogBytes, stringifyCanonical } from "../../lib/catalog-v2/catalog.mjs";
+import { commitPointer, stageGeneration } from "../../lib/catalog-v2/storage.mjs";
 
 /** @returns {{ privateKey: string, publicKey: string }} PEM pair */
 export function makeKeyPair() {
@@ -85,17 +86,28 @@ export function makeZip(entries) {
   return Buffer.concat([localBuffer, centralBuffer, eocd]);
 }
 
-/** Build a schema-v3 descriptor object. Insertion order does not matter (JSON parsing). */
+/**
+ * Build a real-shaped Turboism schema-v3 descriptor object: format
+ * turboism.plugin.meta with entrypoints and runtime-facing fields, plus every
+ * field the v2 publication binding compares (id, version, category, ordered
+ * tags, turboismApi, environment.requiresCubism, permissions, dependencies).
+ */
 export function makeDescriptor(overrides = {}) {
   return {
+    format: "turboism.plugin.meta",
     schemaVersion: 3,
     id: "dev.turboism.plugin.project-inspector",
     version: "0.1.0",
     name: "Project Inspector",
+    summary: "Inspect the active Cubism project and workspace.",
+    turboismApi: "[0.1.0,0.2.0)",
     category: "development",
     tags: ["project", "inspection"],
-    turboismApi: "[0.1.0,0.2.0)",
-    environment: { requiresCubism: true },
+    environment: { requiresCubism: true, cubismEditor: "5.3.02" },
+    entrypoints: {
+      main: "dev.turboism.plugin.projectinspector.ProjectInspectorPlugin",
+      menu: "dev.turboism.plugin.projectinspector.MenuContributor",
+    },
     permissions: [{ id: "dev.turboism.plugin.core", scope: "application", reason: "inspect project files" }],
     dependencies: [{ id: "dev.turboism.plugin.core", version: "[0.1.0,0.3.0)", type: "required", ordering: "none" }],
     ...overrides,
@@ -166,17 +178,20 @@ export function makeCatalog(overrides = {}) {
  * Provision a signed pair plus allowlist in a temp directory (the HTTP test
  * seam). Returns the dir paths and key material.
  */
-export function deployPair(dir, { catalog = makeCatalog(), keyId = "turboism-test-v2", purpose = "production", plugins = null } = {}) {
+export function deployPair(dir, { catalog = makeCatalog(), keyId = "turboism-test-v2", purpose = "production", plugins = null, generationId = "00000001" } = {}) {
   const object = plugins === null ? catalog : { ...catalog, plugins };
   const bytes = stringifyCanonical(object, "catalog");
   const keys = makeKeyPair();
   const allowlist = makeAllowlist(keyId, keys.publicKey, purpose);
   const signed = signCatalogBytes(Buffer.from(bytes, "utf8"), keys.privateKey, keyId);
   if (!signed.ok) throw new Error(`fixture signing failed: ${signed.errors[0].message}`);
+  const sigBytes = stringifyCanonical(signed.envelope, "envelope");
   mkdirSync(dir, { recursive: true });
-  writeFileSync(path.join(dir, "catalog.json"), bytes, "utf8");
-  writeFileSync(path.join(dir, "catalog.json.sig"), stringifyCanonical(signed.envelope, "envelope"), "utf8");
+  const staged = stageGeneration(dir, generationId, Buffer.from(bytes, "utf8"), Buffer.from(sigBytes, "utf8"));
+  if (!staged.ok) throw new Error(`fixture staging failed: ${staged.message}`);
+  const committed = commitPointer(dir, generationId);
+  if (!committed.ok) throw new Error(`fixture pointer commit failed: ${committed.message}`);
   writeFileSync(path.join(dir, "trusted-keys.json"), JSON.stringify(allowlist), "utf8");
   writeFileSync(path.join(dir, "private.pem"), keys.privateKey, "utf8");
-  return { dir, catalogBytes: Buffer.from(bytes, "utf8"), keys, allowlist, keyId };
+  return { dir, catalogBytes: Buffer.from(bytes, "utf8"), sigBytes: Buffer.from(sigBytes, "utf8"), keys, allowlist, keyId, generationId };
 }

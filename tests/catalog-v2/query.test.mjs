@@ -244,6 +244,9 @@ test("invalid values return 400 with the offending field", () => {
     ["page=0", "page"],
     ["page=-1", "page"],
     ["page=1.5", "page"],
+    ["page=007", "page"],
+    ["page=9007199254740992", "page"],
+    ["pageSize=007", "pageSize"],
     ["pageSize=0", "pageSize"],
     ["pageSize=101", "pageSize"],
     ["cubismVersion=5.3", "cubismVersion"],
@@ -270,11 +273,15 @@ test("sort: published-desc uses the selected release date with id tie-break", ()
   assert.ok(ids("").indexOf("dev.third.plugin.light-studio") < ids("").indexOf("dev.turboism.plugin.rig-poser"));
 });
 
-test("sort: updated-desc uses the max release date including yanked", () => {
+test("sort: updated-desc uses the most recent MATCHING candidate release", () => {
   const updated = ids("sort=updated-desc");
-  // mat-painter's yanked 0.6.0 (08-25) makes it the most recently updated.
-  assert.equal(updated[0], "dev.turboism.plugin.mat-painter");
-  assert.equal(updated[1], "dev.third.plugin.mocap-suite");
+  // mat-painter's yanked 0.6.0 (08-25) never counts; its newest matching
+  // candidate is 0.5.0 (08-18), so mocap-suite (2.0.0, 08-21) sorts first.
+  assert.deepEqual(updated, ["dev.third.plugin.mocap-suite", "dev.turboism.plugin.project-inspector", "dev.turboism.plugin.mat-painter", "dev.acme.plugin.palette-helper", "dev.third.plugin.light-studio", "dev.turboism.plugin.rig-poser", "dev.turboism.plugin.auto-lipsync"]);
+  // With channel=stable, mat-painter's candidate is 0.5.0 and preview-only
+  // plugins drop out entirely.
+  const stable = ids("sort=updated-desc&channel=stable");
+  assert.deepEqual(stable, ["dev.third.plugin.mocap-suite", "dev.turboism.plugin.mat-painter", "dev.acme.plugin.palette-helper", "dev.third.plugin.light-studio", "dev.turboism.plugin.rig-poser"]);
 });
 
 test("sort: name-asc and name-desc with locale display names", () => {
@@ -307,6 +314,23 @@ test("yanked releases are never selected", () => {
   const matPainter = searchOf("").items.find((item) => item.slug === "mat-painter");
   assert.notEqual(matPainter.latestCompatibleRelease.status, "yanked");
   assert.equal(matPainter.latestCompatibleRelease.version, "0.5.0");
+});
+
+test("releases with empty tags are valid, selectable, and never match q through tags", () => {
+  const emptyTagsCatalog = makeCatalog({
+    plugins: [
+      makePlugin({ releases: [makeRelease({ tags: [], requiresCubism: false, cubismVersions: [] })] }),
+      makePlugin({ id: "dev.acme.plugin.palette-helper", slug: "palette-helper", name: "Palette Helper", summary: "Organize color palettes.", trust: "reviewed-third-party", author: "Acme Studio", releases: [makeRelease({ tags: ["color"], category: "rendering", requiresCubism: false, cubismVersions: [] })] }),
+    ],
+  });
+  const all = runSearch(emptyTagsCatalog, parseQuery(new URLSearchParams("")).query);
+  assert.equal(all.items.length, 2);
+  const noTag = all.items.find((item) => item.slug === "project-inspector");
+  assert.deepEqual(noTag.latestCompatibleRelease.tags, []);
+  // q=color matches only the tagged release; the empty-tags plugin matches
+  // through its plugin identity fields for its own name.
+  assert.deepEqual(runSearch(emptyTagsCatalog, parseQuery(new URLSearchParams("q=color")).query).items.map((item) => item.slug).sort(), ["palette-helper"]);
+  assert.deepEqual(runSearch(emptyTagsCatalog, parseQuery(new URLSearchParams("q=project")).query).items.map((item) => item.slug), ["project-inspector"]);
 });
 
 test("search items carry category/tags only inside latestCompatibleRelease", () => {

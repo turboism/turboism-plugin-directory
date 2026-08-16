@@ -536,7 +536,18 @@ test("publisher workflow static assertions: trigger, guard, permissions, environ
   // Post-publish: diff check, marker scan, scoped commit as
   // github-actions[bot], non-force push to main.
   assert.match(workflow, /git diff --check/);
-  assert.match(workflow, /PRIVATE KEY/);
+  // Marker scan regression: the uppercase marker is assembled at shell
+  // runtime from adjacent quoted fragments, so the workflow source contains
+  // zero contiguous uppercase occurrence and can never self-match, while
+  // grep still searches the whole repository (workflow included) for the
+  // exact marker with the unchanged Markdown/test exclusions.
+  assert.doesNotMatch(workflow, /PRIVATE KEY/, "workflow source must not contain the contiguous uppercase marker");
+  const markerFrag = workflow.match(/marker='([^']*)''([^']*)'/);
+  assert.ok(markerFrag, "marker must be assembled at shell runtime from adjacent quoted fragments");
+  assert.equal(markerFrag[1] + markerFrag[2], "PRIVATE KEY", "the fragments must assemble to the exact uppercase marker");
+  assert.match(workflow, /-e "\$marker" \./);
+  assert.match(workflow, /grep -rI -n/);
+  assert.match(workflow, /--exclude='\*\.md' --exclude-dir=tests/);
   assert.match(workflow, /git add public\/api\/v2/);
   assert.match(workflow, /github-actions\[bot\]/);
   assert.match(workflow, /git push origin HEAD:refs\/heads\/main/);

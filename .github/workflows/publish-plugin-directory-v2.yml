@@ -106,10 +106,15 @@ jobs:
       - name: Scan for private-key markers
         run: |
           set -euo pipefail
+          # The uppercase marker is assembled at shell runtime from adjacent
+          # quoted fragments so this workflow never contains the contiguous
+          # uppercase text and cannot self-match; grep still searches the
+          # whole repository for the exact marker.
+          marker='PRIVAT''E KEY'
           hits="$(grep -rI -n \
             --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.next \
             --exclude='*.md' --exclude-dir=tests \
-            -e 'PRIVATE KEY' . || true)"
+            -e "$marker" . || true)"
           if [ -n "$hits" ]; then
             printf '%s\n' "$hits"
             echo "private-key marker found outside Markdown/test fixtures"

@@ -428,16 +428,49 @@ test("frozen invariant: a torn or invalid current pair fails closed and is never
   }
 });
 
-test("publisher workflow static assertions: trigger, guard, permissions, environment, pins, and secret hygiene", () => {
+test("frozen invariant: a non-ENOENT root error fails closed before signing and writes nothing", () => {
+  const dir = tempDir();
+  try {
+    const keys = makeKeyPair();
+    const files = writeEmptyPublication(path.join(dir, "src"), {
+      catalogVersion: 1,
+      publishedAt: "2026-08-16T08:48:40Z",
+      keys,
+      allowlist: makeAllowlist("turboism-official-v1", keys.publicKey, "production"),
+    });
+    // The output root is a regular FILE: inspecting "<root>/current" and
+    // reading the root yield ENOTDIR, not ENOENT. Only ENOENT means
+    // absent/initial; any other filesystem error must fail the invariant.
+    const fileRoot = path.join(dir, "out-file");
+    writeFileSync(fileRoot, "not a directory");
+    const before = readFileSync(fileRoot);
+    assert.throws(
+      () => runPublish(publishArgs({ ...files, keyId: "turboism-official-v1", outDir: fileRoot })),
+      /cannot inspect the publication root|refusing to publish/,
+    );
+    assert.deepEqual(readFileSync(fileRoot), before, "nothing may be written around a non-ENOENT root error");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("publisher workflow static assertions: trigger, guard, permissions, environment, pins, timeout, and single-step key lifetime", () => {
   const workflow = readFileSync(path.join(ROOT, ".github", "workflows", "publish-plugin-directory-v2.yml"), "utf8");
+  // Step blocks: each "- name:" line until the next one at the same indent.
+  const stepBlocks = [...workflow.matchAll(/^      - name: ([^\n]+)\n([\s\S]*?)(?=^      - name: |\Z)/gm)].map((m) => ({ name: m[1], body: m[2] }));
+  assert.ok(stepBlocks.length >= 8, "expected the full step list");
+  const publishBlock = stepBlocks.find((s) => s.name === "Publish the catalog/signature pair");
+  assert.ok(publishBlock, "publish step must exist");
   // Trigger structure: workflow_dispatch ONLY (no pull_request/push/schedule).
   const onBlock = workflow.match(/^on:\n((?:[ \t]+\S[^\n]*\n?)*)/m);
   assert.ok(onBlock, "on: trigger block must be present");
   assert.match(onBlock[1], /workflow_dispatch/);
   assert.doesNotMatch(onBlock[1], /pull_request|push|schedule/);
-  // Ref guard and signing environment.
+  // Ref guard, signing environment, and bounded job timeout.
   assert.match(workflow, /github\.ref\s*!=\s*'refs\/heads\/main'/);
   assert.match(workflow, /environment:\s*catalog-signing/);
+  assert.match(workflow, /runs-on:\s*ubuntu-latest\n\s+timeout-minutes:\s*\d+/);
+  assert.match(workflow, /timeout-minutes:\s*30/);
   // Exactly the two pinned actions, nothing else.
   const uses = [...workflow.matchAll(/^\s*uses:\s*(\S+)/gm)].map((m) => m[1]);
   assert.deepEqual(uses, [
@@ -455,33 +488,58 @@ test("publisher workflow static assertions: trigger, guard, permissions, environ
   assert.match(workflow, /concurrency:/);
   assert.match(workflow, /group:\s*publish-plugin-directory-v2/);
   assert.match(workflow, /cancel-in-progress:\s*false/);
-  // Secret hygiene: umask 077, $RUNNER_TEMP only, cleanup trap BEFORE the
-  // write, secret referenced only via the env mapping, never uploaded.
-  assert.match(workflow, /umask 077/);
-  assert.match(workflow, /PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/);
-  assert.match(workflow, /secrets\.PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/);
-  assert.match(workflow, /\$RUNNER_TEMP/);
-  const trapIndex = workflow.indexOf("trap cleanup EXIT");
-  const writeIndex = workflow.indexOf('> "$KEY_FILE"');
-  assert.ok(trapIndex !== -1 && writeIndex !== -1, "key write and cleanup trap must exist");
-  assert.ok(trapIndex < writeIndex, "cleanup trap must be installed BEFORE the key write");
   assert.doesNotMatch(workflow, /upload-artifact/);
+  // Single-step key lifetime: the secret-scoped publish step materializes
+  // the key (umask 077, $RUNNER_TEMP, trap BEFORE the write) and invokes the
+  // publisher in the SAME step; no later step may access the key or secret.
+  assert.match(publishBlock.body, /secrets\.PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/);
+  assert.match(publishBlock.body, /umask 077/);
+  assert.match(publishBlock.body, /\$RUNNER_TEMP/);
+  assert.equal((workflow.match(/secrets\.PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/g) || []).length, 1, "the secret must be referenced exactly once");
+  const trapIndex = publishBlock.body.indexOf("trap cleanup EXIT");
+  const writeIndex = publishBlock.body.indexOf('> "$KEY_FILE"');
+  const publishIndex = publishBlock.body.indexOf("publish.mjs");
+  assert.ok(trapIndex !== -1 && writeIndex !== -1 && publishIndex !== -1, "trap, key write, and publisher invocation must exist in the publish step");
+  assert.ok(trapIndex < writeIndex, "cleanup trap must be installed BEFORE the key write");
+  assert.ok(writeIndex < publishIndex, "key write must precede the publisher invocation");
+  for (const step of stepBlocks) {
+    if (step === publishBlock) continue;
+    assert.doesNotMatch(step.body, /KEY_FILE|PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/, `step "${step.name}" must not access the key or the secret`);
+  }
   // Gates run before the publisher; publisher uses the committed
   // source/manifest/allowlist, the fixed keyId, and out public/api/v2.
   assert.ok(workflow.indexOf("npm run test:catalog") < workflow.indexOf("publish.mjs"), "catalog+HTTP gates must run before publish");
-  assert.match(workflow, /--catalog catalog\/v2\/catalog\.json/);
-  assert.match(workflow, /--jars catalog\/v2\/jars\.json/);
-  assert.match(workflow, /--key-id turboism-official-v1/);
-  assert.match(workflow, /--keys lib\/catalog-v2\/trusted-keys\.json/);
-  assert.match(workflow, /--out public\/api\/v2/);
-  // Post-publish: only public/api/v2 may change; diff check, marker scan,
-  // scoped commit as github-actions[bot], non-force push to main.
+  assert.match(publishBlock.body, /--catalog catalog\/v2\/catalog\.json/);
+  assert.match(publishBlock.body, /--jars catalog\/v2\/jars\.json/);
+  assert.match(publishBlock.body, /--key-id turboism-official-v1/);
+  assert.match(publishBlock.body, /--keys lib\/catalog-v2\/trusted-keys\.json/);
+  assert.match(publishBlock.body, /--out public\/api\/v2/);
+  // Scope gate: EVERY porcelain entry is validated by path. Tracked
+  // (modified) and untracked entries under public/api/v2/ are accepted;
+  // anything outside the root is rejected. Simulates the exact gate command
+  // for both the initial (all-untracked) and subsequent (tracked pointer
+  // update) publication forms.
+  const gateMatch = workflow.match(/grep -v '([^']*)'/);
+  assert.ok(gateMatch, "scope gate must filter porcelain entries by path");
+  const gateRe = new RegExp(gateMatch[1]);
+  const gateRejects = (porcelain) => porcelain.split("\n").filter((l) => l !== "").some((l) => !gateRe.test(l));
+  // Initial publication: all-untracked pair under public/api/v2 is accepted.
+  assert.ok(!gateRejects("?? public/api/v2/generations/00000001/catalog.json\n?? public/api/v2/generations/00000001/catalog.json.sig\n?? public/api/v2/current"));
+  // Subsequent publication: tracked pointer update under public/api/v2 is accepted.
+  assert.ok(!gateRejects(" M public/api/v2/current"));
+  assert.ok(!gateRejects("M  public/api/v2/current\n?? public/api/v2/generations/00000002/catalog.json\n M public/api/v2/generations/00000002/catalog.json.sig"));
+  // Anything outside the root is rejected.
+  assert.ok(gateRejects(" M scripts/catalog-v2/publish.mjs"));
+  assert.ok(gateRejects("?? public/api/v3/current"));
+  assert.ok(gateRejects(" M public/api/v2-current"));
+  assert.ok(gateRejects("?? public/api/v2/x\n M scripts/catalog-v2/publish.mjs"));
+  // Post-publish: diff check, marker scan, scoped commit as
+  // github-actions[bot], non-force push to main.
   assert.match(workflow, /git diff --check/);
   assert.match(workflow, /PRIVATE KEY/);
   assert.match(workflow, /git add public\/api\/v2/);
   assert.match(workflow, /github-actions\[bot\]/);
   assert.match(workflow, /git push origin HEAD:refs\/heads\/main/);
-
   // The push must never be forced.
   assert.doesNotMatch(workflow, /git push[^\n]*(--force|\s-f(\s|$))/);
 });

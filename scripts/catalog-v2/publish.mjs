@@ -101,16 +101,26 @@ function checkPublicationInvariant(outDir, canonicalBuf, keyId, trustedKeys, sou
   let pointerPresent = true;
   try {
     lstatSync(pointerPath);
-  } catch {
-    pointerPresent = false;
+  } catch (error) {
+    // ONLY ENOENT means "no pointer yet". Any other filesystem error
+    // (ENOTDIR, permission, I/O, ...) fails closed before signing/staging.
+    if (error?.code === "ENOENT") {
+      pointerPresent = false;
+    } else {
+      return { ok: false, message: `cannot inspect the publication root (${error?.code ?? error?.message}); refusing to publish` };
+    }
   }
   if (!pointerPresent) {
     // Initial publication is allowed only when the root is absent or empty.
     let entries = null;
     try {
       entries = readdirSync(outDir);
-    } catch {
-      entries = null;
+    } catch (error) {
+      // Only ENOENT means the root is absent (a true first launch); any
+      // other filesystem error fails closed.
+      if (error?.code !== "ENOENT") {
+        return { ok: false, message: `cannot read the publication root (${error?.code ?? error?.message}); refusing to publish` };
+      }
     }
     if (entries !== null && entries.length > 0) {
       return {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, createPublicKey } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -261,9 +261,28 @@ test("a pair signed with a test-purpose key is rejected by production routes", a
   }
 });
 
-test("the committed production allowlist is empty, so the default routes fail closed", async () => {
+test("the committed production allowlist carries exactly the reviewed turboism-official-v1 public key", async () => {
   const allowlist = JSON.parse(readFileSync(path.join(process.cwd(), "lib", "catalog-v2", "trusted-keys.json"), "utf8"));
-  assert.deepEqual(allowlist, {});
+  // Exactly one key, no extras.
+  assert.deepEqual(Object.keys(allowlist), ["turboism-official-v1"]);
+  const entry = allowlist["turboism-official-v1"];
+  assert.equal(entry.purpose, "production");
+  assert.equal(typeof entry.pem, "string");
+  // Public-only: no private-key marker may exist in the allowlist.
+  assert.doesNotMatch(entry.pem, /PRIVATE KEY/, "the committed allowlist must never carry private-key material");
+  // A valid Ed25519 SPKI public key.
+  const publicKey = createPublicKey(entry.pem);
+  assert.equal(publicKey.asymmetricKeyType, "ed25519");
+  // Frozen ceremony fingerprints: public PEM and SPKI DER SHA-256.
+  assert.equal(
+    createHash("sha256").update(entry.pem).digest("hex"),
+    "7d143588b7402d233d374e6701b7dd818503c899f69aa28f7ae21461ef639718",
+  );
+  const spkiDer = Buffer.from(entry.pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, ""), "base64");
+  assert.equal(
+    createHash("sha256").update(spkiDer).digest("hex"),
+    "53bcd1e36aa9d8af00de14be0619079136e3cfe0078dc5ad85d5d2328ed0eb83",
+  );
 });
 
 test("served catalog and signature form a verifiable pair", async () => {

@@ -7,8 +7,8 @@
 //   node scripts/catalog-v2/verify.mjs --catalog <file> [--sig <file>] [--keys <allowlist.json>] [--require-production] [--quiet]
 //
 // The allowlist maps keyId -> { pem, purpose: "production" | "test" }.
-// The production allowlist lives at lib/catalog-v2/trusted-keys.json and is
-// intentionally empty until the production public key is provisioned.
+// The production allowlist lives at lib/catalog-v2/trusted-keys.json and
+// carries the reviewed production public key (turboism-official-v1).
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { loadTrustedKeys, validateCatalogBytes, verifyCatalogBytes } from "../../lib/catalog-v2/catalog.mjs";

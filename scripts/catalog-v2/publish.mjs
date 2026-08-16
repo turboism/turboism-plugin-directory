@@ -7,6 +7,11 @@
 //      META-INF/turboism/plugin.json schema-v3 descriptor, identity,
 //      category/ordered-tags equality, normalized capabilities);
 //   3. emit canonical deterministic catalog bytes;
+//   3.5. enforce the frozen catalogVersion publication invariant (contract
+//      8): production-verify an existing current pair, allow idempotent
+//      no-op or same-version key rotation only for identical bytes, require
+//      exactly current + 1 for changed bytes, and never treat a malformed
+//      partial root as a first launch;
 //   4. sign the exact staged bytes with an Ed25519 private key;
 //   5. verify the exact staged bytes against the trusted-keys allowlist
 //      (production purpose only);
@@ -31,7 +36,7 @@
 // inputs are accepted (no .tplugin, no ZIP store input). Nothing is written
 // to `--out` unless every stage passes. The private key never enters this
 // repository.
-import { readFileSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import {
   checkJarBinding,
@@ -41,7 +46,7 @@ import {
   validateCatalogBytes,
   verifyCatalogBytes,
 } from "../../lib/catalog-v2/catalog.mjs";
-import { commitPointer, nextGenerationId, stageGeneration } from "../../lib/catalog-v2/storage.mjs";
+import { POINTER_FILE, commitPointer, loadCurrentGeneration, nextGenerationId, stageGeneration } from "../../lib/catalog-v2/storage.mjs";
 
 const args = process.argv.slice(2);
 const argValue = (name) => {
@@ -67,6 +72,84 @@ const fail = (stage, message) => {
   console.error(`publish failed at ${stage}: ${message}`);
   process.exit(1);
 };
+
+/**
+ * Frozen catalogVersion publication invariant (contract 8, section 8).
+ * Runs BEFORE any signing or staging when a current generation is present:
+ *  1. the current pair must load and production-verify against the trusted
+ *     allowlist; any missing/torn/invalid pair fails closed and is never
+ *     overwritten around;
+ *  2. identical canonical bytes + same keyId => idempotent success, no new
+ *     generation, no write;
+ *  3. different bytes => the source catalogVersion must be exactly
+ *     current + 1; equal, lower, or skipped versions fail;
+ *  4. identical bytes + different keyId => key rotation is allowed at the
+ *     SAME catalogVersion with a new signed generation; identical catalog
+ *     bytes never increment catalogVersion;
+ *  5. no current pointer => initial publication is allowed ONLY on an absent
+ *     or empty root; a malformed partial publication root is not treated as
+ *     initial.
+ * @param {string} outDir
+ * @param {Buffer} canonicalBuf canonical source bytes
+ * @param {string} keyId requested signing key id
+ * @param {object} trustedKeys allowlist { keyId: { pem, purpose } }
+ * @param {number} sourceVersion source catalog catalogVersion
+ * @returns {{ ok: true, idempotent?: boolean, generationId?: string } | { ok: false, message: string }}
+ */
+function checkPublicationInvariant(outDir, canonicalBuf, keyId, trustedKeys, sourceVersion) {
+  const pointerPath = path.join(outDir, POINTER_FILE);
+  let pointerPresent = true;
+  try {
+    lstatSync(pointerPath);
+  } catch {
+    pointerPresent = false;
+  }
+  if (!pointerPresent) {
+    // Initial publication is allowed only when the root is absent or empty.
+    let entries = null;
+    try {
+      entries = readdirSync(outDir);
+    } catch {
+      entries = null;
+    }
+    if (entries !== null && entries.length > 0) {
+      return {
+        ok: false,
+        message: `malformed partial publication root: no current pointer but "${outDir}" is not empty; initial publication is not allowed`,
+      };
+    }
+    return { ok: true };
+  }
+  const loaded = loadCurrentGeneration(outDir);
+  if (!loaded.ok) {
+    return { ok: false, message: `the current pair is missing or torn (${loaded.message}); refusing to publish around it` };
+  }
+  const verified = verifyCatalogBytes(loaded.catalogBytes, loaded.sigBytes, trustedKeys, { requireProduction: true });
+  if (!verified.ok) {
+    return {
+      ok: false,
+      message: "the current pair failed production verification against the trusted allowlist; refusing to publish around it",
+    };
+  }
+  if (canonicalBuf.equals(loaded.catalogBytes)) {
+    if (verified.envelope.keyId === keyId) {
+      // Identical bytes under the same key: idempotent, no new generation.
+      return { ok: true, idempotent: true, generationId: loaded.generationId };
+    }
+    // Identical bytes under a different key: rotation at the SAME
+    // catalogVersion with a new signed generation.
+    return { ok: true };
+  }
+  // Semantic change: the source must advance catalogVersion by exactly one.
+  const currentVersion = verified.catalog.catalogVersion;
+  if (sourceVersion !== currentVersion + 1) {
+    return {
+      ok: false,
+      message: `source catalogVersion ${sourceVersion} is not exactly current + 1 (${currentVersion} + 1); equal, lower, or skipped versions fail before signing`,
+    };
+  }
+  return { ok: true };
+}
 
 // Stage 1: strict schema v2 validation of the source catalog.
 const sourceBytes = readFileSync(catalogPath);
@@ -113,10 +196,29 @@ console.log(`validated ${catalog.plugins.length} plugin(s), ${bindings} release 
 
 // Stage 3: canonical deterministic catalog bytes.
 const canonicalBytes = stringifyCanonical(catalog, "catalog");
+const canonicalBuf = Buffer.from(canonicalBytes, "utf8");
+
+// Stage 3.5: load the trusted allowlist once, then enforce the frozen
+// catalogVersion publication invariant (contract 8) BEFORE any signing or
+// staging. Idempotent runs exit successfully without writing anything.
+const keysCheck = loadTrustedKeys(keysPath);
+if (!keysCheck.ok) {
+  fail("verification", keysCheck.message);
+}
+const invariant = checkPublicationInvariant(outDir, canonicalBuf, keyId, keysCheck.keys, catalog.catalogVersion);
+if (!invariant.ok) {
+  fail("invariant", invariant.message);
+}
+if (invariant.idempotent) {
+  console.log(
+    `idempotent: generation ${invariant.generationId} already carries these exact bytes under key "${keyId}"; no new generation, nothing written`,
+  );
+  process.exit(0);
+}
 
 // Stage 4: sign the exact staged bytes.
 const privateKeyPem = readFileSync(keyPath, "utf8");
-const signed = signCatalogBytes(Buffer.from(canonicalBytes, "utf8"), privateKeyPem, keyId);
+const signed = signCatalogBytes(canonicalBuf, privateKeyPem, keyId);
 if (!signed.ok) {
   for (const issue of signed.errors) {
     console.error(`sign error: ${issue.path}: ${issue.message}`);
@@ -126,11 +228,7 @@ if (!signed.ok) {
 const envelopeBytes = stringifyCanonical(signed.envelope, "envelope");
 
 // Stage 5: verify the exact staged bytes against the allowlist (production).
-const keysCheck = loadTrustedKeys(keysPath);
-if (!keysCheck.ok) {
-  fail("verification", keysCheck.message);
-}
-const verified = verifyCatalogBytes(Buffer.from(canonicalBytes, "utf8"), Buffer.from(envelopeBytes, "utf8"), keysCheck.keys, {
+const verified = verifyCatalogBytes(canonicalBuf, Buffer.from(envelopeBytes, "utf8"), keysCheck.keys, {
   requireProduction: true,
 });
 if (!verified.ok) {

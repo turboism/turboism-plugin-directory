@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { loadTrustedKeys, stringifyCanonical, verifyCatalogBytes } from "../../lib/catalog-v2/catalog.mjs";
+import { loadTrustedKeys, signCatalogBytes, stringifyCanonical, verifyCatalogBytes } from "../../lib/catalog-v2/catalog.mjs";
 import { commitPointer, loadCurrentGeneration, stageGeneration } from "../../lib/catalog-v2/storage.mjs";
 import { deployPair, makeAllowlist, makeDescriptor, makeKeyPair, makePlugin, makeRelease, makeZip } from "./fixtures.mjs";
 
@@ -18,6 +18,44 @@ function tempDir() {
 
 function runPublish(args) {
   return execFileSync(process.execPath, [PUBLISH, ...args], { encoding: "utf8", cwd: ROOT });
+}
+
+/** An empty catalog: the first launch has zero releases (frozen source shape). */
+function emptyCatalog(catalogVersion, publishedAt) {
+  return { format: "turboism.plugin.catalog", schemaVersion: 2, catalogVersion, publishedAt, plugins: [] };
+}
+
+/** Recursive snapshot of every file under a directory: path -> exact bytes. */
+function snapshotDir(dir) {
+  const snapshot = new Map();
+  const walk = (base) => {
+    for (const entry of readdirSync(base, { withFileTypes: true })) {
+      const full = path.join(base, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else snapshot.set(path.relative(dir, full), readFileSync(full));
+    }
+  };
+  if (existsSync(dir)) walk(dir);
+  return snapshot;
+}
+
+/** Write the source catalog/manifest/key/allowlist files for an empty catalog publication. */
+function writeEmptyPublication(dir, { catalogVersion, publishedAt, keys, allowlist }) {
+  mkdirSync(dir, { recursive: true });
+  const catalogBytes = Buffer.from(stringifyCanonical(emptyCatalog(catalogVersion, publishedAt), "catalog"), "utf8");
+  const catalogFile = path.join(dir, "catalog.json");
+  writeFileSync(catalogFile, catalogBytes);
+  const manifestFile = path.join(dir, "jars.json");
+  writeFileSync(manifestFile, "{}");
+  const keyFile = path.join(dir, "signing.pem");
+  writeFileSync(keyFile, keys.privateKey);
+  const allowlistFile = path.join(dir, "trusted-keys.json");
+  writeFileSync(allowlistFile, JSON.stringify(allowlist));
+  return { catalogBytes, catalogFile, manifestFile, keyFile, allowlistFile };
+}
+
+function publishArgs({ catalogFile, manifestFile, keyFile, keyId, allowlistFile, outDir }) {
+  return ["--catalog", catalogFile, "--jars", manifestFile, "--key", keyFile, "--key-id", keyId, "--keys", allowlistFile, "--out", outDir];
 }
 
 test("publish pipeline publishes a verifiable pair for a descriptor-bound catalog", () => {
@@ -233,4 +271,217 @@ test("injected fault before the pointer commit leaves the old generation served"
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("frozen invariant: identical bytes + same keyId is idempotent and writes nothing", () => {
+  const dir = tempDir();
+  try {
+    const deployed = deployPair(dir, { catalog: emptyCatalog(1, "2026-08-16T08:48:40Z"), keyId: "turboism-official-v1" });
+    const files = writeEmptyPublication(dir, {
+      catalogVersion: 1,
+      publishedAt: "2026-08-16T08:48:40Z",
+      keys: deployed.keys,
+      allowlist: deployed.allowlist,
+    });
+    assert.ok(files.catalogBytes.equals(deployed.catalogBytes), "source bytes must match the deployed pair");
+    const before = snapshotDir(dir);
+    const out = runPublish(publishArgs({ ...files, keyId: "turboism-official-v1", outDir: dir }));
+    assert.ok(out.includes("idempotent"), out);
+    assert.ok(out.includes("nothing written"), out);
+    assert.deepEqual(snapshotDir(dir), before, "an idempotent run must not write a single byte");
+    assert.equal(readFileSync(path.join(dir, "current"), "utf8"), "00000001");
+    assert.deepEqual(readdirSync(path.join(dir, "generations")), ["00000001"]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("frozen invariant: identical bytes + a different keyId rotates the key at the same catalogVersion", () => {
+  const dir = tempDir();
+  try {
+    const first = deployPair(dir, { catalog: emptyCatalog(1, "2026-08-16T08:48:40Z"), keyId: "turboism-official-v1" });
+    const rotated = makeKeyPair();
+    const allowlist = {
+      "turboism-official-v1": first.allowlist["turboism-official-v1"],
+      "turboism-official-v2": makeAllowlist("turboism-official-v2", rotated.publicKey, "production")["turboism-official-v2"],
+    };
+    const files = writeEmptyPublication(dir, {
+      catalogVersion: 1,
+      publishedAt: "2026-08-16T08:48:40Z",
+      keys: rotated,
+      allowlist,
+    });
+    assert.ok(files.catalogBytes.equals(first.catalogBytes), "rotation keeps the identical catalog bytes");
+    const out = runPublish(publishArgs({ ...files, keyId: "turboism-official-v2", outDir: dir }));
+    assert.ok(out.includes("generation 00000002"), out);
+    assert.equal(readFileSync(path.join(dir, "current"), "utf8"), "00000002");
+    // Identical bytes never increment catalogVersion.
+    const rotatedCatalog = JSON.parse(readFileSync(path.join(dir, "generations", "00000002", "catalog.json"), "utf8"));
+    assert.equal(rotatedCatalog.catalogVersion, 1);
+    // The new pair verifies under the new key; generation 1 stays immutable.
+    const verified = verifyCatalogBytes(
+      readFileSync(path.join(dir, "generations", "00000002", "catalog.json")),
+      readFileSync(path.join(dir, "generations", "00000002", "catalog.json.sig")),
+      loadTrustedKeys(files.allowlistFile).keys,
+      { requireProduction: true },
+    );
+    assert.ok(verified.ok, JSON.stringify(verified.errors));
+    assert.equal(verified.envelope.keyId, "turboism-official-v2");
+    assert.ok(readFileSync(path.join(dir, "generations", "00000001", "catalog.json")).equals(first.catalogBytes));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("frozen invariant: changed bytes must advance catalogVersion by exactly one; equal, lower, and skipped versions fail before writing", () => {
+  const dir = tempDir();
+  try {
+    const first = deployPair(path.join(dir, "out"), { catalog: emptyCatalog(1, "2026-08-16T08:48:40Z"), keyId: "turboism-official-v1" });
+    const outDir = path.join(dir, "out");
+    const filesFor = (catalogVersion, publishedAt) =>
+      writeEmptyPublication(path.join(dir, "src"), {
+        catalogVersion,
+        publishedAt,
+        keys: first.keys,
+        allowlist: first.allowlist,
+      });
+    // Equal version with different bytes (publishedAt changed) is refused.
+    const before = snapshotDir(outDir);
+    assert.throws(() => runPublish(publishArgs({ ...filesFor(1, "2026-08-16T09:00:00Z"), keyId: "turboism-official-v1", outDir })), /catalogVersion/);
+    assert.deepEqual(snapshotDir(outDir), before, "a refused version must not write anything");
+    // Skipped version (1 -> 3) is refused.
+    assert.throws(() => runPublish(publishArgs({ ...filesFor(3, "2026-08-16T09:00:00Z"), keyId: "turboism-official-v1", outDir })), /catalogVersion/);
+    assert.deepEqual(snapshotDir(outDir), before, "a refused version must not write anything");
+    // Exactly current + 1 succeeds.
+    const ok = runPublish(publishArgs({ ...filesFor(2, "2026-08-16T09:00:00Z"), keyId: "turboism-official-v1", outDir }));
+    assert.ok(ok.includes("generation 00000002"), ok);
+    assert.equal(readFileSync(path.join(outDir, "current"), "utf8"), "00000002");
+    // A LOWER version after the increment is refused.
+    const after = snapshotDir(outDir);
+    assert.throws(() => runPublish(publishArgs({ ...filesFor(1, "2026-08-16T09:00:00Z"), keyId: "turboism-official-v1", outDir })), /catalogVersion/);
+    assert.deepEqual(snapshotDir(outDir), after, "a refused version must not write anything");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("frozen invariant: a malformed partial publication root is not treated as initial", () => {
+  const dir = tempDir();
+  try {
+    // A staged generation with NO current pointer: the crash window between
+    // staging and the pointer commit. It must never be treated as a first
+    // launch.
+    const keys = makeKeyPair();
+    const catalogBytes = Buffer.from(stringifyCanonical(emptyCatalog(1, "2026-08-16T08:48:40Z"), "catalog"), "utf8");
+    const signed = signCatalogBytes(catalogBytes, keys.privateKey, "turboism-official-v1");
+    assert.ok(signed.ok, signed.errors?.[0]?.message);
+    const sigBytes = Buffer.from(stringifyCanonical(signed.envelope, "envelope"), "utf8");
+    const partial = path.join(dir, "partial");
+    const staged = stageGeneration(partial, "00000001", catalogBytes, sigBytes);
+    assert.ok(staged.ok, staged.message);
+    const files = writeEmptyPublication(dir, {
+      catalogVersion: 1,
+      publishedAt: "2026-08-16T08:48:40Z",
+      keys,
+      allowlist: makeAllowlist("turboism-official-v1", keys.publicKey, "production"),
+    });
+    const before = snapshotDir(partial);
+    assert.throws(() => runPublish(publishArgs({ ...files, keyId: "turboism-official-v1", outDir: partial })), /partial publication root|initial publication is not allowed/);
+    assert.deepEqual(snapshotDir(partial), before, "a partial root must not be completed around");
+    // A stray file with no pointer is also not an initial root.
+    const stray = path.join(dir, "stray");
+    mkdirSync(stray);
+    writeFileSync(path.join(stray, "leftover.tmp"), "junk");
+    assert.throws(() => runPublish(publishArgs({ ...files, keyId: "turboism-official-v1", outDir: stray })), /not empty/);
+    assert.equal(existsSync(path.join(stray, "current")), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("frozen invariant: a torn or invalid current pair fails closed and is never overwritten", () => {
+  const dir = tempDir();
+  try {
+    const deployed = deployPair(dir, { catalog: emptyCatalog(1, "2026-08-16T08:48:40Z"), keyId: "turboism-official-v1" });
+    const files = writeEmptyPublication(dir, {
+      catalogVersion: 1,
+      publishedAt: "2026-08-16T08:48:40Z",
+      keys: deployed.keys,
+      allowlist: deployed.allowlist,
+    });
+    const args = publishArgs({ ...files, keyId: "turboism-official-v1", outDir: dir });
+    // Torn pointer: fails closed, nothing written.
+    writeFileSync(path.join(dir, "current"), "00000002x");
+    const torn = snapshotDir(dir);
+    assert.throws(() => runPublish(args), /missing or torn/);
+    assert.deepEqual(snapshotDir(dir), torn, "a torn current pair must never be repaired implicitly");
+    // Tampered catalog bytes under a still-valid pointer: production
+    // verification of the current pair fails and the publisher refuses to
+    // overwrite around it.
+    writeFileSync(path.join(dir, "current"), "00000001");
+    writeFileSync(path.join(dir, "generations", "00000001", "catalog.json"), stringifyCanonical(emptyCatalog(2, "2026-08-16T09:00:00Z"), "catalog"));
+    const tampered = snapshotDir(dir);
+    assert.throws(() => runPublish(args), /failed production verification/);
+    assert.deepEqual(snapshotDir(dir), tampered, "the invalid pair must not be overwritten");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("publisher workflow static assertions: trigger, guard, permissions, environment, pins, and secret hygiene", () => {
+  const workflow = readFileSync(path.join(ROOT, ".github", "workflows", "publish-plugin-directory-v2.yml"), "utf8");
+  // Trigger structure: workflow_dispatch ONLY (no pull_request/push/schedule).
+  const onBlock = workflow.match(/^on:\n((?:[ \t]+\S[^\n]*\n?)*)/m);
+  assert.ok(onBlock, "on: trigger block must be present");
+  assert.match(onBlock[1], /workflow_dispatch/);
+  assert.doesNotMatch(onBlock[1], /pull_request|push|schedule/);
+  // Ref guard and signing environment.
+  assert.match(workflow, /github\.ref\s*!=\s*'refs\/heads\/main'/);
+  assert.match(workflow, /environment:\s*catalog-signing/);
+  // Exactly the two pinned actions, nothing else.
+  const uses = [...workflow.matchAll(/^\s*uses:\s*(\S+)/gm)].map((m) => m[1]);
+  assert.deepEqual(uses, [
+    "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+    "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+  ]);
+  // Permissions block: contents: write ONLY.
+  const permissions = workflow.match(/permissions:\n((?:[ \t]+\S[^\n]*\n)+)/);
+  assert.ok(permissions, "permissions block must be present");
+  assert.deepEqual(
+    permissions[1].trim().split("\n").map((l) => l.trim()),
+    ["contents: write"],
+  );
+  // One concurrency group, never cancelled.
+  assert.match(workflow, /concurrency:/);
+  assert.match(workflow, /group:\s*publish-plugin-directory-v2/);
+  assert.match(workflow, /cancel-in-progress:\s*false/);
+  // Secret hygiene: umask 077, $RUNNER_TEMP only, cleanup trap BEFORE the
+  // write, secret referenced only via the env mapping, never uploaded.
+  assert.match(workflow, /umask 077/);
+  assert.match(workflow, /PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/);
+  assert.match(workflow, /secrets\.PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/);
+  assert.match(workflow, /\$RUNNER_TEMP/);
+  const trapIndex = workflow.indexOf("trap cleanup EXIT");
+  const writeIndex = workflow.indexOf('> "$KEY_FILE"');
+  assert.ok(trapIndex !== -1 && writeIndex !== -1, "key write and cleanup trap must exist");
+  assert.ok(trapIndex < writeIndex, "cleanup trap must be installed BEFORE the key write");
+  assert.doesNotMatch(workflow, /upload-artifact/);
+  // Gates run before the publisher; publisher uses the committed
+  // source/manifest/allowlist, the fixed keyId, and out public/api/v2.
+  assert.ok(workflow.indexOf("npm run test:catalog") < workflow.indexOf("publish.mjs"), "catalog+HTTP gates must run before publish");
+  assert.match(workflow, /--catalog catalog\/v2\/catalog\.json/);
+  assert.match(workflow, /--jars catalog\/v2\/jars\.json/);
+  assert.match(workflow, /--key-id turboism-official-v1/);
+  assert.match(workflow, /--keys lib\/catalog-v2\/trusted-keys\.json/);
+  assert.match(workflow, /--out public\/api\/v2/);
+  // Post-publish: only public/api/v2 may change; diff check, marker scan,
+  // scoped commit as github-actions[bot], non-force push to main.
+  assert.match(workflow, /git diff --check/);
+  assert.match(workflow, /PRIVATE KEY/);
+  assert.match(workflow, /git add public\/api\/v2/);
+  assert.match(workflow, /github-actions\[bot\]/);
+  assert.match(workflow, /git push origin HEAD:refs\/heads\/main/);
+
+  // The push must never be forced.
+  assert.doesNotMatch(workflow, /git push[^\n]*(--force|\s-f(\s|$))/);
 });

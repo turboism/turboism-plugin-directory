@@ -1,0 +1,133 @@
+# Manual production publisher for the signed Plugin Directory v2 catalog pair.
+#
+# Security posture:
+# - workflow_dispatch ONLY, guarded to refs/heads/main; never PR/push/schedule.
+# - Runs in the catalog-signing environment; the Ed25519 private key exists
+#   only as the PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM environment secret.
+# - contents: write is the ONLY permission; one concurrency group.
+# - The key is written with umask 077 to $RUNNER_TEMP only, behind a cleanup
+#   trap installed BEFORE the write, and is never echoed, cat-ed, hashed, or
+#   uploaded.
+# - The publisher enforces the frozen catalogVersion invariant (contract 8):
+#   it fails closed on any missing/torn/invalid current pair and only ever
+#   commits a production-verified generation. An idempotent run writes and
+#   commits nothing.
+# - After publishing, the ONLY allowed working-tree change is under
+#   public/api/v2/; git diff --check and a private-key marker scan (excluding
+#   Markdown/test fixtures) run before the generated pair is committed as
+#   github-actions[bot] and pushed to main without force.
+name: Publish Plugin Directory v2 catalog
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: publish-plugin-directory-v2
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish signed v2 catalog
+    runs-on: ubuntu-latest
+    environment: catalog-signing
+    steps:
+      - name: Check out main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+
+      - name: Reject non-main invocations
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "workflow_dispatch is only valid on refs/heads/main"
+          exit 1
+
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run catalog and HTTP gates
+        run: |
+          set -euo pipefail
+          npm run test:catalog
+          npm run test:http:catalog
+
+      - name: Materialize signing key from secret
+        env:
+          PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM: ${{ secrets.PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY_FILE="$RUNNER_TEMP/plugin-catalog-signing-key.pem"
+          cleanup() { rm -f "$KEY_FILE"; }
+          trap cleanup EXIT
+          printf '%s\n' "$PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM" > "$KEY_FILE"
+          test -s "$KEY_FILE"
+
+      - name: Publish the catalog/signature pair
+        run: |
+          set -euo pipefail
+          node scripts/catalog-v2/publish.mjs \
+            --catalog catalog/v2/catalog.json \
+            --jars catalog/v2/jars.json \
+            --key "$RUNNER_TEMP/plugin-catalog-signing-key.pem" \
+            --key-id turboism-official-v1 \
+            --keys lib/catalog-v2/trusted-keys.json \
+            --out public/api/v2
+
+      - name: Verify only public/api/v2 changed
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            echo "tracked files changed; expected none outside public/api/v2"
+            git diff --name-only
+            exit 1
+          fi
+          status="$(git status --porcelain --untracked-files=all)"
+          if [ -n "$status" ]; then
+            bad="$(printf '%s\n' "$status" | grep -v '^?? public/api/v2/' || true)"
+            if [ -n "$bad" ]; then
+              printf '%s\n' "$bad"
+              echo "working tree changed outside public/api/v2"
+              exit 1
+            fi
+          fi
+          echo "working tree changed only under public/api/v2"
+
+      - name: Check diff hygiene
+        run: git diff --check
+
+      - name: Scan for private-key markers
+        run: |
+          set -euo pipefail
+          hits="$(grep -rI -n \
+            --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.next \
+            --exclude='*.md' --exclude-dir=tests \
+            -e 'PRIVATE KEY' . || true)"
+          if [ -n "$hits" ]; then
+            printf '%s\n' "$hits"
+            echo "private-key marker found outside Markdown/test fixtures"
+            exit 1
+          fi
+          echo "private-key marker scan clean"
+
+      - name: Commit the generated pair and push to main
+        run: |
+          set -euo pipefail
+          if git diff --quiet && [ -z "$(git status --porcelain --untracked-files=all)" ]; then
+            echo "catalog pair is already current; nothing to commit"
+            exit 0
+          fi
+          git add public/api/v2
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m 'chore(catalog-v2): publish signed catalog generation'
+          git push origin HEAD:refs/heads/main

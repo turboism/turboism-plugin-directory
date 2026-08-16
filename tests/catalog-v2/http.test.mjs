@@ -7,6 +7,7 @@ import path from "node:path";
 import {
   CATALOG_CACHE_CONTROL,
   CATALOG_CONTENT_TYPE,
+  NEGOTIATION_VARY,
   SEARCH_CACHE_CONTROL,
   SEARCH_CONTENT_TYPE,
   SIGNATURE_CONTENT_TYPE,
@@ -46,6 +47,7 @@ test("without a provisioned pair every endpoint fails closed with 503 catalog_un
       assert.equal(response.headers.get("x-content-type-options"), "nosniff");
       assert.equal(response.headers.get("access-control-allow-origin"), "*");
       assert.equal(response.headers.get("cache-control"), null);
+      assert.equal(response.headers.get("vary"), NEGOTIATION_VARY);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -79,6 +81,7 @@ test("catalog endpoint serves exact identity bytes with v2 media type, ETag, and
     assert.equal(response.headers.get("etag"), `"${createHash("sha256").update(deployed.catalogBytes).digest("hex")}"`);
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(response.headers.get("vary"), NEGOTIATION_VARY);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -96,6 +99,7 @@ test("signature endpoint serves exact envelope bytes", async () => {
     assert.equal(response.headers.get("content-type"), SIGNATURE_CONTENT_TYPE);
     assert.equal(response.headers.get("cache-control"), CATALOG_CACHE_CONTROL);
     assert.ok(response.headers.get("etag"));
+    assert.equal(response.headers.get("vary"), NEGOTIATION_VARY);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -111,6 +115,7 @@ test("HEAD returns the same headers with no body and a Content-Length", async ()
     assert.equal(head.status, 200);
     assert.equal((await head.arrayBuffer()).byteLength, 0);
     assert.equal(head.headers.get("etag"), get.headers.get("etag"));
+    assert.equal(head.headers.get("vary"), NEGOTIATION_VARY);
     assert.equal(head.headers.get("content-length"), String(deployed.catalogBytes.byteLength));
     const searchHead = serveSearch(request("/api/v2/plugins", { method: "HEAD" }), storage, true);
     assert.equal(searchHead.status, 200);
@@ -137,6 +142,7 @@ test("If-None-Match returns 304 with no body on every endpoint", async () => {
       assert.equal(revalidated.status, 304, pathname);
       assert.equal((await revalidated.arrayBuffer()).byteLength, 0);
       assert.equal(revalidated.headers.get("etag"), etag);
+      assert.equal(revalidated.headers.get("vary"), NEGOTIATION_VARY);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -166,6 +172,7 @@ test("Accept negotiation: version=1 and unrelated media types return 406 not_acc
     assert.equal(versionOne.status, 406);
     const envelope = JSON.parse(await versionOne.text());
     assert.equal(envelope.error.code, "not_acceptable");
+    assert.equal(versionOne.headers.get("vary"), NEGOTIATION_VARY);
     const html = serveSearch(request("/api/v2/plugins", { headers: { Accept: "text/html" } }), storage);
     assert.equal(html.status, 406);
     const json = serveSearch(request("/api/v2/plugins", { headers: { Accept: "application/json" } }), storage);
@@ -204,6 +211,7 @@ test("search endpoint returns the canonical discovery response and 400 invalid_q
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type"), SEARCH_CONTENT_TYPE);
     assert.equal(response.headers.get("cache-control"), SEARCH_CACHE_CONTROL);
+    assert.equal(response.headers.get("vary"), NEGOTIATION_VARY);
     const body = JSON.parse(await response.text());
     assert.equal(body.format, "turboism.plugin.search");
     assert.equal(body.schemaVersion, 2);
@@ -218,6 +226,7 @@ test("search endpoint returns the canonical discovery response and 400 invalid_q
     const errorEnvelope = JSON.parse(await invalid.text());
     assert.deepEqual(errorEnvelope.error, { code: "invalid_query", message: "unknown query parameter", field: "unknown" });
     assert.deepEqual(Object.keys(errorEnvelope), ["error"]);
+    assert.equal(invalid.headers.get("vary"), NEGOTIATION_VARY);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -241,6 +250,7 @@ test("tampered deployed catalog fails closed with 500 catalog_invalid", async ()
       assert.equal(response.status, 500);
       const envelope = JSON.parse(await response.text());
       assert.equal(envelope.error.code, "catalog_invalid");
+      assert.equal(response.headers.get("vary"), NEGOTIATION_VARY);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });

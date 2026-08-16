@@ -334,22 +334,63 @@ test("catalog key order in deployed bytes is canonical and deterministic", async
 
 test("hostile CATALOG_V2_* environment variables are NEVER consulted by routes", async () => {
   const provisionedDir = tempDir();
-  const emptyDir = tempDir();
   try {
-    deployPair(provisionedDir);
+    // Distinguishable provisioned fixture: a catalog identity that can never
+    // collide with the curated production catalog, so a route that consulted
+    // the hostile env would return observably different bytes than the real
+    // default production root.
+    deployPair(provisionedDir, {
+      catalog: makeCatalog({
+        catalogVersion: 99,
+        publishedAt: "2026-08-15T00:00:00Z",
+        plugins: [makePlugin({ id: "dev.turboism.plugin.hostile-decoy", slug: "hostile-decoy", name: "Hostile Decoy", summary: "hostile env decoy" })],
+      }),
+    });
+    // The fixture is genuinely distinguishable from the default production
+    // root: the explicit storage seam serves the decoy with 200, and its
+    // bytes differ from the baseline bytes whatever the publication state
+    // happens to be (provisioned 200 or unprovisioned 503).
+    const decoyResponse = serveCatalog(request("/api/v2/catalog.json"), storageFor(provisionedDir));
+    assert.equal(decoyResponse.status, 200);
+    const decoyBytes = Buffer.from(await decoyResponse.arrayBuffer());
+    const decoySearch = serveSearch(request("/api/v2/plugins"), storageFor(provisionedDir));
+    assert.equal(decoySearch.status, 200);
+
+    // Baseline: the real default storage with no hostile env. This captures
+    // the production publication state at run time — provisioned (200) or
+    // not (503) — deterministically instead of hard-coding either status.
+    const baselineCatalog = serveCatalog(request("/api/v2/catalog.json"));
+    const baselineSearch = serveSearch(request("/api/v2/plugins"));
+    const baselineCatalogBytes = Buffer.from(await baselineCatalog.arrayBuffer());
+    const baselineSearchBytes = Buffer.from(await baselineSearch.arrayBuffer());
+    assert.ok(!baselineCatalogBytes.equals(decoyBytes), "hostile fixture must be distinguishable from the default production root");
+
     const previousStorage = process.env.CATALOG_V2_STORAGE_DIR;
     const previousKeys = process.env.CATALOG_V2_TRUSTED_KEYS_FILE;
     process.env.CATALOG_V2_STORAGE_DIR = provisionedDir;
     process.env.CATALOG_V2_TRUSTED_KEYS_FILE = path.join(provisionedDir, "trusted-keys.json");
     try {
       // Default storage (no injected object) must ignore the hostile env and
-      // read the real production root: an empty dir fails closed with 503.
-      const response = serveCatalog(request("/api/v2/catalog.json"));
-      assert.equal(response.status, 503);
-      const envelope = JSON.parse(await response.text());
-      assert.equal(envelope.error.code, "catalog_unavailable");
+      // read the real production root: catalog and search responses must equal
+      // the baseline in status, relevant headers, and exact bytes, whether the
+      // baseline is a provisioned 200 or an unprovisioned 503.
+      const catalog = serveCatalog(request("/api/v2/catalog.json"));
+      assert.equal(catalog.status, baselineCatalog.status);
+      assert.equal(catalog.headers.get("content-type"), baselineCatalog.headers.get("content-type"));
+      assert.equal(catalog.headers.get("cache-control"), baselineCatalog.headers.get("cache-control"));
+      assert.equal(catalog.headers.get("etag"), baselineCatalog.headers.get("etag"));
+      assert.equal(catalog.headers.get("access-control-allow-origin"), baselineCatalog.headers.get("access-control-allow-origin"));
+      assert.equal(catalog.headers.get("x-content-type-options"), baselineCatalog.headers.get("x-content-type-options"));
+      assert.ok(Buffer.from(await catalog.arrayBuffer()).equals(baselineCatalogBytes));
+
       const search = serveSearch(request("/api/v2/plugins"));
-      assert.equal(search.status, 503);
+      assert.equal(search.status, baselineSearch.status);
+      assert.equal(search.headers.get("content-type"), baselineSearch.headers.get("content-type"));
+      assert.equal(search.headers.get("cache-control"), baselineSearch.headers.get("cache-control"));
+      assert.equal(search.headers.get("etag"), baselineSearch.headers.get("etag"));
+      assert.equal(search.headers.get("access-control-allow-origin"), baselineSearch.headers.get("access-control-allow-origin"));
+      assert.equal(search.headers.get("x-content-type-options"), baselineSearch.headers.get("x-content-type-options"));
+      assert.ok(Buffer.from(await search.arrayBuffer()).equals(baselineSearchBytes));
     } finally {
       if (previousStorage === undefined) delete process.env.CATALOG_V2_STORAGE_DIR;
       else process.env.CATALOG_V2_STORAGE_DIR = previousStorage;
@@ -358,7 +399,6 @@ test("hostile CATALOG_V2_* environment variables are NEVER consulted by routes",
     }
   } finally {
     rmSync(provisionedDir, { recursive: true, force: true });
-    rmSync(emptyDir, { recursive: true, force: true });
   }
 });
 

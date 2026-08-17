@@ -457,7 +457,13 @@ test("frozen invariant: a non-ENOENT root error fails closed before signing and 
 test("publisher workflow static assertions: trigger, guard, permissions, environment, pins, timeout, and single-step key lifetime", () => {
   const workflow = readFileSync(path.join(ROOT, ".github", "workflows", "publish-plugin-directory-v2.yml"), "utf8");
   // Step blocks: each "- name:" line until the next one at the same indent.
-  const stepBlocks = [...workflow.matchAll(/^      - name: ([^\n]+)\n([\s\S]*?)(?=^      - name: |\Z)/gm)].map((m) => ({ name: m[1], body: m[2] }));
+  const stepBlocks = workflow
+    .split("\n      - name: ")
+    .slice(1)
+    .map((chunk) => {
+      const [name, ...bodyLines] = chunk.split("\n");
+      return { name, body: bodyLines.join("\n") };
+    });
   assert.ok(stepBlocks.length >= 8, "expected the full step list");
   const publishBlock = stepBlocks.find((s) => s.name === "Publish the catalog/signature pair");
   assert.ok(publishBlock, "publish step must exist");
@@ -510,7 +516,7 @@ test("publisher workflow static assertions: trigger, guard, permissions, environ
   // source/manifest/allowlist, the fixed keyId, and out public/api/v2.
   assert.ok(workflow.indexOf("npm run test:catalog") < workflow.indexOf("publish.mjs"), "catalog+HTTP gates must run before publish");
   assert.match(publishBlock.body, /--catalog catalog\/v2\/catalog\.json/);
-  assert.match(publishBlock.body, /--jars catalog\/v2\/jars\.json/);
+  assert.match(publishBlock.body, /--jars "\$RUNNER_TEMP\/market-jars\/jars\.json"/);
   assert.match(publishBlock.body, /--key-id turboism-official-v1/);
   assert.match(publishBlock.body, /--keys lib\/catalog-v2\/trusted-keys\.json/);
   assert.match(publishBlock.body, /--out public\/api\/v2/);
@@ -519,9 +525,9 @@ test("publisher workflow static assertions: trigger, guard, permissions, environ
   // anything outside the root is rejected. Simulates the exact gate command
   // for both the initial (all-untracked) and subsequent (tracked pointer
   // update) publication forms.
-  const gateMatch = workflow.match(/grep -v '([^']*)'/);
-  assert.ok(gateMatch, "scope gate must filter porcelain entries by path");
-  const gateRe = new RegExp(gateMatch[1]);
+  const gatePatterns = [...workflow.matchAll(/-e '([^']*)'/g)].map((m) => m[1]);
+  assert.equal(gatePatterns.length, 2, "scope gate must filter both allowed roots");
+  const gateRe = new RegExp(gatePatterns.join("|"));
   const gateRejects = (porcelain) => porcelain.split("\n").filter((l) => l !== "").some((l) => !gateRe.test(l));
   // Initial publication: all-untracked pair under public/api/v2 is accepted.
   assert.ok(!gateRejects("?? public/api/v2/generations/00000001/catalog.json\n?? public/api/v2/generations/00000001/catalog.json.sig\n?? public/api/v2/current"));
@@ -548,9 +554,135 @@ test("publisher workflow static assertions: trigger, guard, permissions, environ
   assert.match(workflow, /-e "\$marker" \./);
   assert.match(workflow, /grep -rI -n/);
   assert.match(workflow, /--exclude='\*\.md' --exclude-dir=tests/);
-  assert.match(workflow, /git add public\/api\/v2/);
+  assert.match(workflow, /git add public\/api\/v2 catalog\/v2\/catalog\.json/);
   assert.match(workflow, /github-actions\[bot\]/);
   assert.match(workflow, /git push origin HEAD:refs\/heads\/main/);
   // The push must never be forced.
   assert.doesNotMatch(workflow, /git push[^\n]*(--force|\s-f(\s|$))/);
+});
+
+test("publisher workflow static assertions: automated lane inputs, all-or-none gate, token scope, no-clobber, hydration, and allowed diff", () => {
+  const workflow = readFileSync(path.join(ROOT, ".github", "workflows", "publish-plugin-directory-v2.yml"), "utf8");
+  const stepBlocks = workflow
+    .split("\n      - name: ")
+    .slice(1)
+    .map((chunk) => {
+      const [name, ...bodyLines] = chunk.split("\n");
+      return { name, body: bodyLines.join("\n") };
+    });
+  const step = (name) => stepBlocks.find((s) => s.name === name);
+
+  // The three optional string inputs are all-or-none with empty defaults.
+  const inputsBlock = workflow.match(/^on:\n((?:[ \t]+\S[^\n]*\n?)*)/m)[1];
+  for (const input of ["source_run_id", "source_sha", "artifact_name"]) {
+    assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+(?:description|required|type|default):[^\n]*\\n)+`));
+    assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+[^\n]*\\n)*[ \t]+type: string`));
+    assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+[^\n]*\\n)*[ \t]+default: ""`));
+  }
+  const gate = step("Validate dispatch inputs are all-or-none");
+  assert.ok(gate, "all-or-none gate step must exist");
+  // R1: inputs are evaluated in YAML env: values only; run: blocks reference
+  // quoted shell variables and never interpolate ${{ inputs.* }} directly.
+  assert.match(gate.body, /SOURCE_RUN_ID: \$\{\{ inputs\.source_run_id \}\}/);
+  assert.match(gate.body, /SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/);
+  assert.match(gate.body, /ARTIFACT_NAME: \$\{\{ inputs\.artifact_name \}\}/);
+  assert.match(gate.body, /for value in "\$SOURCE_RUN_ID" "\$SOURCE_SHA" "\$ARTIFACT_NAME"/);
+  assert.match(gate.body, /present=0/);
+  assert.match(gate.body, /-ne 0/);
+  assert.match(gate.body, /-ne 3/);
+  assert.match(gate.body, /exit 1/);
+  for (const block of stepBlocks) {
+    const runIndex = block.body.indexOf("run: |");
+    if (runIndex === -1) continue;
+    const runBody = block.body.slice(runIndex);
+    assert.doesNotMatch(runBody, /\$\{\{ inputs\./, `step "${block.name}" must never interpolate inputs into shell`);
+  }
+
+  // Automated steps run only when source_run_id is present; hydrate always
+  // runs (manual mode must hydrate non-empty catalogs too).
+  for (const name of ["Verify source run and download its artifact", "Validate the source bundle", "Create or resume public plugin Releases", "Ingest accepted releases into the source catalog"]) {
+    assert.ok(step(name), `${name} step must exist`);
+    assert.match(step(name).body, /if: inputs\.source_run_id != ''/, `${name} must be automated-only`);
+  }
+  const hydrate = step("Hydrate the local JAR manifest");
+  assert.ok(hydrate);
+  assert.doesNotMatch(hydrate.body, /^\s*if: /, "hydrate must run in manual mode too");
+  assert.match(hydrate.body, /SOURCE_RUN_ID: \$\{\{ inputs\.source_run_id \}\}/);
+  assert.match(hydrate.body, /if \[ -n "\$SOURCE_RUN_ID" \]/);
+  assert.match(hydrate.body, /--manifest-out "\$RUNNER_TEMP\/market-jars\/jars\.json"/);
+  assert.match(hydrate.body, /--bundle \$RUNNER_TEMP\/market-bundle-normalized\.json/);
+
+  // Private-source token scope: TURBOISM_RELEASE_ARTIFACT_READ_TOKEN appears
+  // exactly once as a secret reference, in the verify step's env only.
+  const verify = step("Verify source run and download its artifact");
+  assert.match(verify.body, /TURBOISM_RELEASE_ARTIFACT_READ_TOKEN: \$\{\{ secrets\.TURBOISM_RELEASE_ARTIFACT_READ_TOKEN \}\}/);
+  assert.match(verify.body, /SOURCE_RUN_ID: \$\{\{ inputs\.source_run_id \}\}/);
+  assert.match(verify.body, /SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/);
+  assert.match(verify.body, /ARTIFACT_NAME: \$\{\{ inputs\.artifact_name \}\}/);
+  assert.match(verify.body, /verify-run/);
+  assert.match(verify.body, /--run-id "\$SOURCE_RUN_ID"/);
+  assert.match(verify.body, /--sha "\$SOURCE_SHA"/);
+  assert.match(verify.body, /--artifact-name "\$ARTIFACT_NAME"/);
+  assert.match(verify.body, /--out "\$RUNNER_TEMP\/market-bundle"/);
+  assert.equal((workflow.match(/secrets\.TURBOISM_RELEASE_ARTIFACT_READ_TOKEN/g) || []).length, 1, "the private-source token secret must be referenced exactly once");
+  for (const s of stepBlocks) {
+    if (s === verify) continue;
+    assert.doesNotMatch(s.body, /TURBOISM_RELEASE_ARTIFACT_READ_TOKEN/, `step "${s.name}" must never touch the private-source token`);
+  }
+  // The signing secret is still referenced exactly once, in the publish step.
+  assert.equal((workflow.match(/secrets\.PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/g) || []).length, 1);
+
+  // R2: the bundle validation binds the sidecar revision to the verified SHA.
+  const validate = step("Validate the source bundle");
+  assert.match(validate.body, /SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/);
+  assert.match(validate.body, /--expected-revision "\$SOURCE_SHA"/);
+
+  // R3: the read-only preflight step exists, is automated-only, and runs
+  // BEFORE any public Release mutation.
+  const preflight = step("Preflight catalog conflicts (read-only)");
+  assert.ok(preflight, "preflight step must exist");
+  assert.match(preflight.body, /if: inputs\.source_run_id != ''/);
+  assert.match(preflight.body, /ingest-official-release\.mjs preflight/);
+  assert.match(preflight.body, /--catalog catalog\/v2\/catalog\.json/);
+  assert.ok(
+    workflow.indexOf("Preflight catalog conflicts (read-only)") < workflow.indexOf("Create or resume public plugin Releases"),
+    "preflight must precede release sync",
+  );
+  const syncIndex = workflow.indexOf("Create or resume public plugin Releases");
+  const ingestIndex = workflow.indexOf("Ingest accepted releases into the source catalog");
+  assert.ok(syncIndex < ingestIndex, "release sync must precede ingest");
+
+  // R4: release sync carries the signed catalog as authoritative context.
+  const sync = step("Create or resume public plugin Releases");
+  assert.match(sync.body, /GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(sync.body, /--catalog catalog\/v2\/catalog\.json/);
+  assert.doesNotMatch(workflow, /--clobber/);
+  assert.doesNotMatch(sync.body, /DELETE|PATCH/);
+
+  // The publisher consumes the hydrated temp manifest, never the committed one.
+  const publish = step("Publish the catalog/signature pair");
+  assert.match(publish.body, /--jars "\$RUNNER_TEMP\/market-jars\/jars\.json"/);
+  assert.ok(workflow.indexOf("Hydrate the local JAR manifest") < workflow.indexOf('--jars "$RUNNER_TEMP'), "hydration must precede publish");
+
+  // Allowed post-publish diff: catalog/v2/catalog.json and public/api/v2/** only.
+  const allowed = step("Verify only the allowed paths changed");
+  assert.ok(allowed);
+  const gatePatterns = [...workflow.matchAll(/-e '([^']*)'/g)].map((m) => m[1]);
+  const gateRe = new RegExp(gatePatterns.join("|"));
+  const gateRejects = (porcelain) => porcelain.split("\n").filter((l) => l !== "").some((l) => !gateRe.test(l));
+  assert.ok(!gateRejects(" M catalog/v2/catalog.json"), "source catalog modification is allowed");
+  assert.ok(!gateRejects("?? catalog/v2/catalog.json\n M public/api/v2/current"), "catalog plus pair is allowed");
+  assert.ok(gateRejects(" M catalog/v2/catalog.json.evil"), "sibling files must be rejected");
+  assert.ok(gateRejects(" M catalog/v2/jars.json"), "the committed JAR manifest must never change");
+  assert.ok(gateRejects(" M catalog/v2/catalog.json\n M scripts/catalog-v2/publish.mjs"), "anything outside the roots must be rejected");
+
+  // Commit: the pair and the source catalog are committed together once;
+  // an idempotent run commits nothing; the push is never forced.
+  const commit = step("Commit the generated pair and push to main");
+  assert.ok(commit);
+  assert.match(commit.body, /if git diff --quiet && \[ -z "\$\(git status --porcelain --untracked-files=all\)" \]/);
+  assert.match(commit.body, /nothing to commit/);
+  assert.match(commit.body, /git add public\/api\/v2 catalog\/v2\/catalog\.json/);
+  assert.match(commit.body, /git push origin HEAD:refs\/heads\/main/);
+  assert.doesNotMatch(commit.body, /--force|\s-f\s/);
 });

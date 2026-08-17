@@ -1,31 +1,71 @@
-# Manual production publisher for the signed Plugin Directory v2 catalog pair.
+# Manual + automated production publisher for the signed Plugin Directory v2
+# catalog pair.
+#
+# Modes:
+# - Manual (all three inputs empty): re-verifies and re-publishes the current
+#   source catalog (catalog/v2/catalog.json), hydrating every release's JAR
+#   from its public GitHub Release asset first, so the lane keeps working
+#   after the first real release.
+# - Automated (all three inputs present): the accepted Turboism source lane
+#   dispatched this workflow before its own run settled. This lane proves the
+#   source run identity from the GitHub API (artifact name bound to the
+#   accepted convention turboism-market-release-<sha>-<run_id>-<run_attempt>),
+#   downloads and validates the bundle (sidecar revision must equal the
+#   verified source SHA), runs a READ-ONLY catalog preflight, creates/resumes
+#   immutable PUBLIC GitHub Releases with the Provider's own token only after
+#   preflight accepts every artifact, merges the catalog deterministically,
+#   hydrates ALL releases (reusing bundle bytes only on exact match), then
+#   runs the existing publisher. Partial input is rejected.
 #
 # Security posture:
 # - workflow_dispatch ONLY, guarded to refs/heads/main; never PR/push/schedule.
 # - Runs in the catalog-signing environment; the Ed25519 private key exists
 #   only as the PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM environment secret.
-# - contents: write is the ONLY permission; one concurrency group; the job
-#   has a bounded timeout-minutes.
 # - The key is materialized and consumed INSIDE ONE secret-scoped step: umask
 #   077, written to $RUNNER_TEMP only, cleanup trap installed BEFORE the
 #   write, publisher invoked in the same step, trap cleanup on that step's
-#   exit. No later step references the key or the secret, and the key is
-#   never echoed, cat-ed, hashed, or uploaded.
+#   exit. No later step references the key or the secret.
+# - The private Turboism read token TURBOISM_RELEASE_ARTIFACT_READ_TOKEN is
+#   used ONLY inside the source-run/artifact verification+download step; it is
+#   never echoed, persisted, uploaded, or exposed to later steps.
+# - contents: write is the ONLY permission; one non-cancelling concurrency
+#   group; the job has a bounded timeout-minutes.
+# - Workflow inputs are never trusted and never interpolated into shell:
+#   every input is passed through YAML env: values and referenced as a quoted
+#   shell variable inside run: blocks. The GitHub API is the authority for
+#   the source run and for Release metadata. Releases are created or resumed
+#   with strict no-clobber semantics (never overwrite an asset or a tag) and
+#   cataloged versions are never recreated or re-uploaded.
 # - The publisher enforces the frozen catalogVersion invariant (contract 8):
 #   it fails closed on any missing/torn/invalid current pair and only ever
 #   commits a production-verified generation. An idempotent run writes and
 #   commits nothing.
 # - After publishing, EVERY working-tree entry (tracked or untracked) is
-#   validated by path: only changes under public/api/v2/ are allowed; a
-#   subsequent publication that updates the tracked pointer file passes,
-#   anything outside the root fails. git diff --check and a private-key
-#   marker scan (excluding Markdown/test fixtures) run before the generated
-#   pair is committed as github-actions[bot] and pushed to main without
-#   force.
+#   validated by path: only catalog/v2/catalog.json and public/api/v2/ are
+#   allowed; anything outside those roots fails. git diff --check and a
+#   private-key marker scan (excluding Markdown/test fixtures) run before the
+#   generated pair is committed as github-actions[bot] and pushed to main
+#   without force.
 name: Publish Plugin Directory v2 catalog
 
 on:
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Turboism source Actions run id (automated lane)"
+        required: false
+        type: string
+        default: ""
+      source_sha:
+        description: "Turboism source commit SHA"
+        required: false
+        type: string
+        default: ""
+      artifact_name:
+        description: "Turboism source artifact name"
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: publish-plugin-directory-v2
@@ -61,11 +101,98 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate dispatch inputs are all-or-none
+        env:
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+        run: |
+          set -euo pipefail
+          present=0
+          for value in "$SOURCE_RUN_ID" "$SOURCE_SHA" "$ARTIFACT_NAME"; do
+            if [ -n "$value" ]; then present=$((present + 1)); fi
+          done
+          if [ "$present" -ne 0 ] && [ "$present" -ne 3 ]; then
+            echo "automated dispatch requires source_run_id, source_sha, and artifact_name together (or none for manual mode)"
+            exit 1
+          fi
+          echo "dispatch inputs valid (automated=$([ "$present" -eq 3 ] && echo yes || echo no))"
+
       - name: Run catalog and HTTP gates
         run: |
           set -euo pipefail
           npm run test:catalog
           npm run test:http:catalog
+
+      - name: Verify source run and download its artifact
+        if: inputs.source_run_id != ''
+        env:
+          TURBOISM_RELEASE_ARTIFACT_READ_TOKEN: ${{ secrets.TURBOISM_RELEASE_ARTIFACT_READ_TOKEN }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+        run: |
+          set -euo pipefail
+          node scripts/catalog-v2/ingest-official-release.mjs verify-run \
+            --run-id "$SOURCE_RUN_ID" \
+            --sha "$SOURCE_SHA" \
+            --artifact-name "$ARTIFACT_NAME" \
+            --out "$RUNNER_TEMP/market-bundle"
+
+      - name: Validate the source bundle
+        if: inputs.source_run_id != ''
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          node scripts/catalog-v2/ingest-official-release.mjs validate-bundle \
+            --sidecar "$RUNNER_TEMP/market-bundle/market-release.json" \
+            --bundle-dir "$RUNNER_TEMP/market-bundle" \
+            --out "$RUNNER_TEMP/market-bundle-normalized.json" \
+            --expected-revision "$SOURCE_SHA"
+
+      - name: Preflight catalog conflicts (read-only)
+        if: inputs.source_run_id != ''
+        run: |
+          set -euo pipefail
+          node scripts/catalog-v2/ingest-official-release.mjs preflight \
+            --catalog catalog/v2/catalog.json \
+            --bundle "$RUNNER_TEMP/market-bundle-normalized.json"
+
+      - name: Create or resume public plugin Releases
+        if: inputs.source_run_id != ''
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node scripts/catalog-v2/ingest-official-release.mjs sync-releases \
+            --bundle "$RUNNER_TEMP/market-bundle-normalized.json" \
+            --out "$RUNNER_TEMP/market-releases.json" \
+            --catalog catalog/v2/catalog.json
+
+      - name: Ingest accepted releases into the source catalog
+        if: inputs.source_run_id != ''
+        run: |
+          set -euo pipefail
+          node scripts/catalog-v2/ingest-official-release.mjs ingest \
+            --catalog catalog/v2/catalog.json \
+            --bundle "$RUNNER_TEMP/market-bundle-normalized.json" \
+            --releases "$RUNNER_TEMP/market-releases.json"
+
+      - name: Hydrate the local JAR manifest
+        env:
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          set -euo pipefail
+          hydrate_args=""
+          if [ -n "$SOURCE_RUN_ID" ]; then
+            hydrate_args="--bundle $RUNNER_TEMP/market-bundle-normalized.json"
+          fi
+          node scripts/catalog-v2/ingest-official-release.mjs hydrate \
+            --catalog catalog/v2/catalog.json \
+            --dir "$RUNNER_TEMP/market-jars" \
+            --manifest-out "$RUNNER_TEMP/market-jars/jars.json" \
+            $hydrate_args
 
       - name: Publish the catalog/signature pair
         env:
@@ -80,25 +207,25 @@ jobs:
           test -s "$KEY_FILE"
           node scripts/catalog-v2/publish.mjs \
             --catalog catalog/v2/catalog.json \
-            --jars catalog/v2/jars.json \
+            --jars "$RUNNER_TEMP/market-jars/jars.json" \
             --key "$KEY_FILE" \
             --key-id turboism-official-v1 \
             --keys lib/catalog-v2/trusted-keys.json \
             --out public/api/v2
 
-      - name: Verify only public/api/v2 changed
+      - name: Verify only the allowed paths changed
         run: |
           set -euo pipefail
           status="$(git status --porcelain --untracked-files=all)"
           if [ -n "$status" ]; then
-            bad="$(printf '%s\n' "$status" | grep -v '^.. public/api/v2/' || true)"
+            bad="$(printf '%s\n' "$status" | grep -v -e '^.. public/api/v2/' -e '^.. catalog/v2/catalog.json$' || true)"
             if [ -n "$bad" ]; then
               printf '%s\n' "$bad"
-              echo "working tree changed outside public/api/v2"
+              echo "working tree changed outside public/api/v2/ and catalog/v2/catalog.json"
               exit 1
             fi
           fi
-          echo "working tree changed only under public/api/v2"
+          echo "working tree changed only under public/api/v2/ and catalog/v2/catalog.json"
 
       - name: Check diff hygiene
         run: git diff --check
@@ -129,7 +256,7 @@ jobs:
             echo "catalog pair is already current; nothing to commit"
             exit 0
           fi
-          git add public/api/v2
+          git add public/api/v2 catalog/v2/catalog.json
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
               commit -m 'chore(catalog-v2): publish signed catalog generation'

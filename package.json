@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "test": "node --test 'tests/**/*.test.mjs'",
-    "test:catalog": "node --test tests/catalog-v2/validate.test.mjs tests/catalog-v2/query.test.mjs tests/catalog-v2/sign-verify.test.mjs tests/catalog-v2/jar-inspect.test.mjs tests/catalog-v2/publish.test.mjs tests/catalog-v2/openapi.test.mjs",
+    "test:catalog": "node --test tests/catalog-v2/validate.test.mjs tests/catalog-v2/query.test.mjs tests/catalog-v2/sign-verify.test.mjs tests/catalog-v2/jar-inspect.test.mjs tests/catalog-v2/ingest-official-release.test.mjs tests/catalog-v2/publish.test.mjs tests/catalog-v2/openapi.test.mjs",
     "test:http:catalog": "node --test tests/catalog-v2/http.test.mjs",
     "validate:directory": "node scripts/validate-directory.js",
     "lint": "eslint",

@@ -72,6 +72,14 @@
 //       binding). Manual mode (no bundle) hydrates non-empty catalogs from
 //       the public assets so the existing publisher still works.
 //
+//   verify-production
+//       Measure the deployed Provider origin after provisioning: require exact
+//       identity encoding and v2 media types for catalog/signature, verify the
+//       exact bytes with the committed production allowlist, then anonymously
+//       download every cataloged JAR through redirect-safe bounded fetching and
+//       confirm its published size and SHA-256. An empty verified catalog is
+//       valid and reports zero measured JARs; no JAR evidence is fabricated.
+//
 // The existing scripts/catalog-v2/publish.mjs then signs and stages the
 // source catalog against this temporary manifest; nothing here writes under
 // public/ and nothing here touches the signing key.
@@ -85,6 +93,7 @@ import {
   MAX_CATALOG_BYTES,
   MAX_PLUGINS,
   MAX_RELEASES,
+  MAX_SIGNATURE_BYTES,
   OFFICIAL_CATEGORIES,
   bindReleaseToDescriptor,
   compareVersions,
@@ -95,6 +104,8 @@ import {
   sha256Hex,
   stringifyCanonical,
   validateCatalogBytes,
+  verifyCatalogBytes,
+  loadTrustedKeys,
 } from "../../lib/catalog-v2/catalog.mjs";
 
 // ---------------------------------------------------------------------------
@@ -110,6 +121,10 @@ const MAX_BUNDLE_ARTIFACTS = 100; // aligned with the catalog MAX_PLUGINS/MAX_RE
 const MAX_BUNDLE_ZIP_BYTES = MAX_BUNDLE_ARTIFACTS * MAX_ARTIFACT_SIZE; // 1.6 GiB strict download/extract cap
 const MAX_BUNDLE_ENTRIES = 4096; // entry-count cap for the extracted artifact zip
 const MAX_ARTIFACT_NAME = 256;
+const MAX_REDIRECTS = 5;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const PRODUCTION_CATALOG_CONTENT_TYPE = "application/vnd.turboism.plugin-catalog+json;version=2";
+const PRODUCTION_SIGNATURE_CONTENT_TYPE = "application/vnd.turboism.plugin-catalog-signature+json;version=2";
 
 // Value-shape regexes, mirroring lib/catalog-v2/catalog.mjs (module-private
 // there). The merged catalog is additionally validated with
@@ -132,6 +147,8 @@ const DEFAULT_API_URL = "https://api.github.com";
 const DEFAULT_ASSET_BASE = "https://github.com";
 const DEFAULT_SOURCE_REPO = "turboism/Turboism";
 const DEFAULT_PUBLIC_REPO = "turboism/turboism-plugin-directory";
+const GITHUB_API_REDIRECT_HOSTS = ["pipelines.actions.githubusercontent.com"];
+const GITHUB_RELEASE_REDIRECT_HOSTS = ["release-assets.githubusercontent.com"];
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -333,9 +350,116 @@ function raiseIf(issues, what) {
 // Bounded HTTP (injectable base URLs; tests stub every endpoint locally).
 // ---------------------------------------------------------------------------
 
-async function apiFetch(url, { token = null, method = "GET", json = null, body = null, contentType = null } = {}) {
-  const headers = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
-  if (token !== null) headers.Authorization = `Bearer ${token}`;
+function checkedRequestUrl(value, approvedHosts, { allowHttp = false, what = "request URL" } = {}) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    fail(`${what} ${JSON.stringify(value)} is not an absolute URL`);
+  }
+  if (parsed.username !== "" || parsed.password !== "") fail(`${what} must not contain credentials`);
+  if (parsed.protocol !== "https:" && !(allowHttp && parsed.protocol === "http:")) {
+    fail(`${what} must use HTTPS`);
+  }
+  if (allowHttp && parsed.protocol === "http:" && parsed.hostname !== "127.0.0.1" && parsed.hostname !== "localhost") {
+    fail(`${what} may use HTTP only for a local test endpoint`);
+  }
+  if (!approvedHosts.has(parsed.host)) {
+    fail(`${what} host "${parsed.host}" is not approved`);
+  }
+  return parsed;
+}
+
+function allowedRequestHosts(...values) {
+  const hosts = new Set();
+  let allowHttp = false;
+  for (const value of values) {
+    let parsed;
+    try {
+      parsed = new URL(value);
+    } catch {
+      usageError(`network base URL ${JSON.stringify(value)} must be absolute`);
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      usageError(`network base URL ${JSON.stringify(value)} must use HTTP or HTTPS`);
+    }
+    if (parsed.username !== "" || parsed.password !== "") {
+      usageError(`network base URL ${JSON.stringify(value)} must not contain credentials`);
+    }
+    if (parsed.protocol === "http:" && parsed.hostname !== "127.0.0.1" && parsed.hostname !== "localhost") {
+      usageError(`network base URL ${JSON.stringify(value)} may use HTTP only for a local test endpoint`);
+    }
+    hosts.add(parsed.host);
+    if (parsed.protocol === "http:") allowHttp = true;
+  }
+  return { hosts, allowHttp };
+}
+
+export async function redirectSafeFetch(
+  url,
+  { method = "GET", headers = {}, body = null, approvedHosts = null, allowHttp = false, maxRedirects = MAX_REDIRECTS } = {},
+) {
+  let current = checkedRequestUrl(url, approvedHosts ?? new Set([new URL(url).host]), { allowHttp });
+  let currentMethod = method;
+  let currentPayload = body;
+  const requestHeaders = { ...headers };
+  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
+    let response;
+    try {
+      response = await fetch(current, { method: currentMethod, headers: requestHeaders, body: currentPayload, redirect: "manual" });
+    } catch (error) {
+      fail(`request to ${current.href} failed: ${error.message}`);
+    }
+    if (!REDIRECT_STATUSES.has(response.status)) return response;
+    const location = response.headers.get("location");
+    await response.body?.cancel().catch(() => {});
+    if (location === null) fail(`redirect from ${current.href} is missing Location`);
+    if (redirectCount === maxRedirects) fail(`request to ${url} exceeded the ${maxRedirects}-redirect cap`);
+    let next;
+    try {
+      next = new URL(location, current);
+    } catch {
+      fail(`redirect from ${current.href} has an invalid Location`);
+    }
+    checkedRequestUrl(next.href, approvedHosts ?? new Set([current.host]), { allowHttp, what: "redirect target" });
+    if (current.protocol === "https:" && next.protocol !== "https:") {
+      fail(`redirect from ${current.href} downgrades HTTPS to ${next.protocol}`);
+    }
+    if ((response.status === 301 || response.status === 302 || response.status === 303) && currentMethod !== "GET" && currentMethod !== "HEAD") {
+      currentMethod = "GET";
+      currentPayload = null;
+      delete requestHeaders["Content-Type"];
+    }
+    current = next;
+  }
+  fail(`request to ${url} exceeded the ${maxRedirects}-redirect cap`);
+}
+
+async function apiFetch(
+  url,
+  {
+    token = null,
+    method = "GET",
+    json = null,
+    body = null,
+    contentType = null,
+    approvedHosts = null,
+    allowHttp = false,
+    requestHeaders = {},
+    maxRedirects = MAX_REDIRECTS,
+  } = {},
+) {
+  const headers = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", ...requestHeaders };
+  if (token !== null) {
+    const targetHost = new URL(url).host;
+    if (approvedHosts !== null && approvedHosts.size !== 1) {
+      fail(`authenticated request to ${url} must not allow redirects to a different host`);
+    }
+    if (approvedHosts !== null && !approvedHosts.has(targetHost)) {
+      fail(`authenticated request host "${targetHost}" is not approved`);
+    }
+    headers.Authorization = `Bearer ${token}`;
+  }
   let payload = body;
   if (json !== null) {
     headers["Content-Type"] = "application/json";
@@ -343,39 +467,43 @@ async function apiFetch(url, { token = null, method = "GET", json = null, body =
   } else if (contentType !== null) {
     headers["Content-Type"] = contentType;
   }
-  let response;
-  try {
-    response = await fetch(url, { method, headers, body: payload });
-  } catch (error) {
-    fail(`request to ${url} failed: ${error.message}`);
-  }
-  return response;
+  return redirectSafeFetch(url, { method, headers, body: payload, approvedHosts, allowHttp, maxRedirects });
 }
 
 async function apiJson(url, options) {
   const response = await apiFetch(url, options);
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    fail(`GitHub API ${response.status} for ${url}: ${body.slice(0, 300)}`);
+    const body = await readErrorBody(response, url);
+    fail(`GitHub API ${response.status} for ${url}: ${body}`);
   }
-  const bytes = Buffer.from(await response.arrayBuffer());
+  const bytes = await readResponseBounded(response, MAX_CATALOG_BYTES, url);
   const value = strictJson(bytes, `GitHub API response from ${url}`);
   if (!isPlainObject(value)) fail(`GitHub API response from ${url} must be an object`);
   return value;
 }
 
-/** Download exact bytes with a hard stream cap (strict bound before/while reading). */
-async function fetchBounded(url, cap, { token = null } = {}) {
-  const response = await apiFetch(url, { token });
-  if (!response.ok) {
-    await response.body?.cancel().catch(() => {});
-    fail(`download failed: ${response.status} ${response.statusText} for ${url}`);
+async function readErrorBody(response, url) {
+  try {
+    return (await readResponseBounded(response, 64 * 1024, url)).toString("utf8").slice(0, 300);
+  } catch {
+    return "unreadable error response";
   }
-  const declared = Number(response.headers.get("content-length") ?? 0);
-  if (Number.isFinite(declared) && declared > cap) {
-    await response.body?.cancel().catch(() => {});
-    fail(`download from ${url} declares ${declared} bytes, exceeding the ${cap}-byte cap`);
+}
+
+async function readResponseBounded(response, cap, url) {
+  const declaredText = response.headers.get("content-length");
+  if (declaredText !== null) {
+    const declared = Number(declaredText);
+    if (!Number.isSafeInteger(declared) || declared < 0) {
+      await response.body?.cancel().catch(() => {});
+      fail(`response from ${url} has an invalid Content-Length`);
+    }
+    if (declared > cap) {
+      await response.body?.cancel().catch(() => {});
+      fail(`download from ${url} declares ${declared} bytes, exceeding the ${cap}-byte cap`);
+    }
   }
+  if (response.body === null) return Buffer.alloc(0);
   const reader = response.body.getReader();
   const chunks = [];
   let size = 0;
@@ -395,6 +523,16 @@ async function fetchBounded(url, cap, { token = null } = {}) {
     chunks.push(Buffer.from(chunk.value));
   }
   return Buffer.concat(chunks);
+}
+
+/** Download exact bytes with a hard stream cap (strict bound before/while reading). */
+async function fetchBounded(url, cap, { token = null, approvedHosts = null, allowHttp = false, requestHeaders = {} } = {}) {
+  const response = await apiFetch(url, { token, approvedHosts, allowHttp, requestHeaders });
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => {});
+    fail(`download failed: ${response.status} ${response.statusText} for ${url}`);
+  }
+  return readResponseBounded(response, cap, url);
 }
 
 // ---------------------------------------------------------------------------
@@ -532,6 +670,11 @@ async function mainVerifyRun(argv) {
   const artifactName = requireFlag(flags, "artifact-name");
   const outDir = requireFlag(flags, "out");
   const apiUrl = flags["api-url"] ?? DEFAULT_API_URL;
+  const apiNetwork = allowedRequestHosts(apiUrl);
+  const artifactNetwork = allowedRequestHosts(
+    apiUrl,
+    ...(apiUrl === DEFAULT_API_URL ? GITHUB_API_REDIRECT_HOSTS.map((host) => `https://${host}`) : []),
+  );
   const pollInterval = Number(flags["poll-interval"] ?? 15);
   const pollTimeout = Number(flags["poll-timeout"] ?? 1200);
   const tokenEnv = flags["token-env"] ?? "TURBOISM_RELEASE_ARTIFACT_READ_TOKEN";
@@ -560,13 +703,13 @@ async function mainVerifyRun(argv) {
   const deadline = Date.now() + pollTimeout * 1000;
   let run = null;
   for (;;) {
-    const response = await apiFetch(runUrl, { token });
+    const response = await apiFetch(runUrl, { token, approvedHosts: apiNetwork.hosts, allowHttp: apiNetwork.allowHttp });
     if (response.status === 404) fail(`source run ${runId} does not exist or the token cannot read it`);
     if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      fail(`cannot inspect source run ${runId}: GitHub API ${response.status}: ${body.slice(0, 300)}`);
+      const body = await readErrorBody(response, runUrl);
+      fail(`cannot inspect source run ${runId}: GitHub API ${response.status}: ${body}`);
     }
-    const bytes = Buffer.from(await response.arrayBuffer());
+    const bytes = await readResponseBounded(response, MAX_CATALOG_BYTES, runUrl);
     run = strictJson(bytes, "source run response");
     checkSourceRun(run, sha, runId);
     if (run.status === "completed") break;
@@ -587,7 +730,7 @@ async function mainVerifyRun(argv) {
 
   // Exactly one non-expired artifact with the exact claimed name.
   const artifactsUrl = `${apiUrl}/repos/${DEFAULT_SOURCE_REPO}/actions/runs/${runId}/artifacts?per_page=100`;
-  const artifactPage = await apiJson(artifactsUrl, { token });
+  const artifactPage = await apiJson(artifactsUrl, { token, approvedHosts: apiNetwork.hosts, allowHttp: apiNetwork.allowHttp });
   if (!Array.isArray(artifactPage.artifacts)) fail("source artifacts response must contain an artifacts array");
   const matches = artifactPage.artifacts.filter((artifact) => isPlainObject(artifact) && artifact.name === artifactName && artifact.expired !== true);
   if (matches.length === 0) fail(`no non-expired artifact named "${artifactName}" exists for source run ${runId}`);
@@ -603,7 +746,13 @@ async function mainVerifyRun(argv) {
     typeof artifact.archive_download_url === "string" && artifact.archive_download_url.length > 0
       ? artifact.archive_download_url
       : `${apiUrl}/repos/${DEFAULT_SOURCE_REPO}/actions/artifacts/${artifact.id}/zip`;
-  const zipBytes = await fetchBounded(downloadUrl, MAX_BUNDLE_ZIP_BYTES, { token });
+  const downloadOrigin = new URL(downloadUrl).host;
+  const apiOrigin = new URL(apiUrl).host;
+  const zipBytes = await fetchBounded(downloadUrl, MAX_BUNDLE_ZIP_BYTES, {
+    token: downloadOrigin === apiOrigin ? token : null,
+    approvedHosts: downloadOrigin === apiOrigin ? apiNetwork.hosts : artifactNetwork.hosts,
+    allowHttp: artifactNetwork.allowHttp,
+  });
   extractArtifactZip(zipBytes, outDir);
   console.log(`verified source run ${runId} (${sha}) and extracted artifact "${artifactName}" -> ${outDir}`);
 }
@@ -1055,6 +1204,11 @@ async function mainSyncReleases(argv) {
   const apiUrl = flags["api-url"] ?? DEFAULT_API_URL;
   const repo = flags["repo"] ?? DEFAULT_PUBLIC_REPO;
   const assetBase = flags["asset-base"] ?? DEFAULT_ASSET_BASE;
+  const apiNetwork = allowedRequestHosts(apiUrl);
+  const assetNetwork = allowedRequestHosts(
+    assetBase,
+    ...(assetBase === DEFAULT_ASSET_BASE ? GITHUB_RELEASE_REDIRECT_HOSTS.map((host) => `https://${host}`) : []),
+  );
   const tokenEnv = flags["token-env"] ?? "GITHUB_TOKEN";
   const token = process.env[tokenEnv];
   if (typeof token !== "string" || token.length === 0) {
@@ -1105,7 +1259,11 @@ async function mainSyncReleases(argv) {
     const catalogedEntry = cataloged.get(key);
     const tag = releaseTag(artifact.module, artifact.version);
     const releasesUrl = `${apiUrl}/repos/${owner}/${repository}/releases/tags/${encodeURIComponent(tag)}`;
-    const existingResponse = await apiFetch(releasesUrl, { token });
+    const existingResponse = await apiFetch(releasesUrl, {
+      token,
+      approvedHosts: apiNetwork.hosts,
+      allowHttp: apiNetwork.allowHttp,
+    });
     let release;
     let created = false;
     if (existingResponse.status === 404) {
@@ -1116,6 +1274,8 @@ async function mainSyncReleases(argv) {
       release = await apiJson(`${apiUrl}/repos/${owner}/${repository}/releases`, {
         token,
         method: "POST",
+        approvedHosts: apiNetwork.hosts,
+        allowHttp: apiNetwork.allowHttp,
         json: {
           tag_name: tag,
           name: tag,
@@ -1129,7 +1289,7 @@ async function mainSyncReleases(argv) {
       // (upload_url is required because the asset upload follows).
       validateReleaseResponse(release, owner, repository, tag, { requireUploadUrl: true });
     } else if (existingResponse.ok) {
-      const bytes = Buffer.from(await existingResponse.arrayBuffer());
+      const bytes = await readResponseBounded(existingResponse, MAX_CATALOG_BYTES, releasesUrl);
       release = strictJson(bytes, "release response");
       // T2: the strict shared gate on the resumed release (assets are
       // required for the canonical-asset resolution below).
@@ -1140,8 +1300,8 @@ async function mainSyncReleases(argv) {
         fail(`release "${tag}" html_url conflicts with the cataloged ${key} releaseUrl; refusing to operate on it`);
       }
     } else {
-      const body = await existingResponse.text().catch(() => "");
-      fail(`cannot inspect release "${tag}": GitHub API ${existingResponse.status}: ${body.slice(0, 300)}`);
+      const body = await readErrorBody(existingResponse, releasesUrl);
+      fail(`cannot inspect release "${tag}": GitHub API ${existingResponse.status}: ${body}`);
     }
 
     // Find the canonical asset among the release's own assets. Exactly one
@@ -1167,7 +1327,10 @@ async function mainSyncReleases(argv) {
       if (catalogedEntry !== undefined && assetUrl !== catalogedEntry.artifactUrl) {
         fail(`release "${tag}" asset "${artifact.asset}" conflicts with the cataloged ${key} artifact URL; refusing to operate on it`);
       }
-      const existingBytes = await fetchBounded(downloadTarget(assetUrl, assetBase), MAX_ARTIFACT_SIZE);
+      const existingBytes = await fetchBounded(downloadTarget(assetUrl, assetBase), MAX_ARTIFACT_SIZE, {
+        approvedHosts: assetNetwork.hosts,
+        allowHttp: assetNetwork.allowHttp,
+      });
       if (sha256Hex(existingBytes) !== artifact.sha256 || existingBytes.byteLength !== artifact.size) {
         fail(`release "${tag}" asset "${artifact.asset}" bytes differ from the source bundle; refusing to overwrite`);
       }
@@ -1190,6 +1353,8 @@ async function mainSyncReleases(argv) {
         method: "POST",
         body: jarBytes,
         contentType: "application/java-archive",
+        approvedHosts: apiNetwork.hosts,
+        allowHttp: apiNetwork.allowHttp,
       });
       if (!isPlainObject(uploaded) || uploaded.name !== artifact.asset || uploaded.size !== artifact.size) {
         fail(`asset upload for "${tag}" did not return the expected asset object`);
@@ -1770,6 +1935,10 @@ async function mainHydrate(argv) {
   const dir = requireFlag(flags, "dir");
   const manifestOut = requireFlag(flags, "manifest-out");
   const assetBase = flags["asset-base"] ?? DEFAULT_ASSET_BASE;
+  const assetNetwork = allowedRequestHosts(
+    assetBase,
+    ...(assetBase === DEFAULT_ASSET_BASE ? GITHUB_RELEASE_REDIRECT_HOSTS.map((host) => `https://${host}`) : []),
+  );
 
   const sourceBytes = readBoundedFile(catalogPath, 5 * 1024 * 1024, "source catalog");
   const validated = validateCatalogBytes(sourceBytes);
@@ -1824,7 +1993,10 @@ async function mainHydrate(argv) {
       }
       if (!reused) {
         const downloadUrl = downloadTarget(artifact.url, assetBase);
-        const bytes = await fetchBounded(downloadUrl, MAX_ARTIFACT_SIZE);
+        const bytes = await fetchBounded(downloadUrl, MAX_ARTIFACT_SIZE, {
+          approvedHosts: assetNetwork.hosts,
+          allowHttp: assetNetwork.allowHttp,
+        });
         if (bytes.byteLength !== artifact.size || sha256Hex(bytes) !== artifact.sha256) {
           fail(`downloaded asset for ${key} failed size/SHA-256 verification (${bytes.byteLength} bytes)`);
         }
@@ -1836,6 +2008,110 @@ async function mainHydrate(argv) {
   }
   writeFileAtomic(manifestOut, Buffer.from(JSON.stringify(manifest), "utf8"));
   console.log(`hydration complete: ${Object.keys(manifest).length} release binding(s) -> ${manifestOut}`);
+}
+
+// ---------------------------------------------------------------------------
+// verify-production: deployed identity bytes + anonymous public JAR evidence
+// ---------------------------------------------------------------------------
+
+async function fetchProductionRepresentation(url, cap, contentType, network, maxRedirects) {
+  const response = await redirectSafeFetch(url, {
+    approvedHosts: network.hosts,
+    allowHttp: network.allowHttp,
+    maxRedirects,
+    headers: { Accept: contentType, "Accept-Encoding": "identity" },
+  });
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => {});
+    fail(`production verification failed: ${response.status} ${response.statusText} for ${url}`);
+  }
+  if (response.headers.get("content-encoding") !== null) {
+    await response.body?.cancel().catch(() => {});
+    fail(`production verification failed: ${url} returned Content-Encoding for an identity request`);
+  }
+  const actualType = response.headers.get("content-type");
+  if (actualType !== contentType) {
+    await response.body?.cancel().catch(() => {});
+    fail(`production verification failed: ${url} returned Content-Type ${JSON.stringify(actualType)}, expected ${contentType}`);
+  }
+  return readResponseBounded(response, cap, url);
+}
+
+async function mainVerifyProduction(argv) {
+  const flags = parseFlags(argv, { strings: ["base-url", "keys", "max-redirects"] });
+  const baseUrl = requireFlag(flags, "base-url").replace(/\/$/, "");
+  const keysPath = requireFlag(flags, "keys");
+  const maxRedirects = Number(flags["max-redirects"] ?? MAX_REDIRECTS);
+  if (!Number.isInteger(maxRedirects) || maxRedirects < 0 || maxRedirects > MAX_REDIRECTS) {
+    usageError(`--max-redirects must be an integer between 0 and ${MAX_REDIRECTS}`);
+  }
+  const baseNetwork = allowedRequestHosts(baseUrl);
+  const base = new URL(baseUrl);
+  if (baseUrl === DEFAULT_API_URL || baseUrl === DEFAULT_ASSET_BASE) {
+    usageError("--base-url must be the deployed Provider origin, not a GitHub endpoint");
+  }
+  if (!baseNetwork.allowHttp && base.origin !== "https://plugin.turboism.dev") {
+    usageError("production --base-url must be exactly https://plugin.turboism.dev");
+  }
+  const catalogUrl = `${baseUrl}/api/v2/catalog.json`;
+  const signatureUrl = `${baseUrl}/api/v2/catalog.json.sig`;
+  const catalogBytes = await fetchProductionRepresentation(
+    catalogUrl,
+    MAX_CATALOG_BYTES,
+    PRODUCTION_CATALOG_CONTENT_TYPE,
+    baseNetwork,
+    maxRedirects,
+  );
+  const signatureBytes = await fetchProductionRepresentation(
+    signatureUrl,
+    MAX_SIGNATURE_BYTES,
+    PRODUCTION_SIGNATURE_CONTENT_TYPE,
+    baseNetwork,
+    maxRedirects,
+  );
+  const keysCheck = loadTrustedKeys(keysPath);
+  if (!keysCheck.ok) fail(`production verification failed: ${keysCheck.message}`);
+  const verified = verifyCatalogBytes(catalogBytes, signatureBytes, keysCheck.keys, { requireProduction: true });
+  if (!verified.ok) {
+    const detail = verified.errors.slice(0, 5).map((issue) => `${issue.path}: ${issue.message}`).join("; ");
+    fail(`production verification failed: deployed catalog/signature pair did not verify (${detail})`);
+  }
+
+  let measuredJars = 0;
+  for (const plugin of verified.catalog.plugins) {
+    for (const release of plugin.releases) {
+      const artifact = release.artifact;
+      let parsed;
+      try {
+        parsed = new URL(artifact.url);
+      } catch {
+        parsed = null;
+      }
+      if (
+        parsed === null ||
+        parsed.protocol !== "https:" ||
+        parsed.hostname !== "github.com" ||
+        !/^\/turboism\/turboism-plugin-directory\/releases\/download\/[^/]+\/[^/]+\.jar$/.test(parsed.pathname)
+      ) {
+        fail(`production verification failed: ${plugin.id}@${release.version} has an unapproved artifact URL`);
+      }
+      const assetNetwork = allowedRequestHosts(
+        parsed.origin,
+        ...GITHUB_RELEASE_REDIRECT_HOSTS.map((host) => `https://${host}`),
+      );
+      const jarBytes = await fetchBounded(parsed.href, MAX_ARTIFACT_SIZE, {
+        approvedHosts: assetNetwork.hosts,
+        allowHttp: assetNetwork.allowHttp,
+      });
+      if (jarBytes.byteLength !== artifact.size || sha256Hex(jarBytes) !== artifact.sha256) {
+        fail(`production verification failed: anonymous JAR for ${plugin.id}@${release.version} failed size/SHA-256 verification`);
+      }
+      measuredJars += 1;
+    }
+  }
+  console.log(
+    `production verification OK: identity catalog bytes ${catalogBytes.byteLength}, key "${verified.envelope.keyId}", anonymous JARs measured ${measuredJars}`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1854,7 +2130,9 @@ subcommands:
                    [--repo <owner/repo>] [--asset-base <url>] [--token-env <env>]
   ingest           --catalog <file> --bundle <file> --releases <file> [--out <file>]
   hydrate          --catalog <file> [--bundle <file>] --dir <dir> --manifest-out <file>
-                   [--asset-base <url>]`;
+                   [--asset-base <url>]
+  verify-production --base-url <provider-origin> --keys <allowlist.json>
+                    [--max-redirects <0..5>]`;
 
 async function main() {
   const [subcommand, ...args] = process.argv.slice(2);
@@ -1877,6 +2155,9 @@ async function main() {
         break;
       case "hydrate":
         await mainHydrate(args);
+        break;
+      case "verify-production":
+        await mainVerifyProduction(args);
         break;
       default:
         console.error(USAGE);

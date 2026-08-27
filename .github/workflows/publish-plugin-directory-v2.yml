@@ -6,8 +6,10 @@
 #   source catalog (catalog/v2/catalog.json), hydrating every release's JAR
 #   from its public GitHub Release asset first, so the lane keeps working
 #   after the first real release.
-# - Automated (all three inputs present): the accepted Turboism source lane
-#   dispatched this workflow before its own run settled. This lane proves the
+# - Automated (all three inputs present): the accepted protected Turboism
+#   source lane, .github/workflows/publish-selected-plugins.yml on main,
+#   dispatches this exact workflow filename/ref and input set before its own
+#   run settles. This lane proves the
 #   source run identity from the GitHub API (artifact name bound to the
 #   accepted convention turboism-market-release-<sha>-<run_id>-<run_attempt>),
 #   downloads and validates the bundle (sidecar revision must equal the
@@ -30,6 +32,9 @@
 #   never echoed, persisted, uploaded, or exposed to later steps.
 # - contents: write is the ONLY permission; one non-cancelling concurrency
 #   group; the job has a bounded timeout-minutes.
+# - The workflow_dispatch source-lane contract is exactly the three optional
+#   string inputs emitted by Turboism core: source_run_id, source_sha, and
+#   artifact_name. They are all-or-none; no additional dispatch inputs exist.
 # - Workflow inputs are never trusted and never interpolated into shell:
 #   every input is passed through YAML env: values and referenced as a quoted
 #   shell variable inside run: blocks. The GitHub API is the authority for
@@ -40,6 +45,9 @@
 #   it fails closed on any missing/torn/invalid current pair and only ever
 #   commits a production-verified generation. An idempotent run writes and
 #   commits nothing.
+# - Deployed identity encoding and anonymous JAR availability are measured by
+#   the separate post-deployment verify-production command; this source lane
+#   does not claim deployment evidence before its generated commit is live.
 # - After publishing, EVERY working-tree entry (tracked or untracked) is
 #   validated by path: only catalog/v2/catalog.json and public/api/v2/ are
 #   allowed; anything outside those roots fails. git diff --check and a
@@ -118,11 +126,14 @@ jobs:
           fi
           echo "dispatch inputs valid (automated=$([ "$present" -eq 3 ] && echo yes || echo no))"
 
-      - name: Run catalog and HTTP gates
+      - name: Run repository gates
         run: |
           set -euo pipefail
-          npm run test:catalog
-          npm run test:http:catalog
+          npm test
+          npm run validate:directory
+          npm run typecheck
+          npm run lint
+          npm run build
 
       - name: Verify source run and download its artifact
         if: inputs.source_run_id != ''

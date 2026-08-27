@@ -514,7 +514,9 @@ test("publisher workflow static assertions: trigger, guard, permissions, environ
   }
   // Gates run before the publisher; publisher uses the committed
   // source/manifest/allowlist, the fixed keyId, and out public/api/v2.
-  assert.ok(workflow.indexOf("npm run test:catalog") < workflow.indexOf("publish.mjs"), "catalog+HTTP gates must run before publish");
+  for (const gate of ["npm test", "npm run validate:directory", "npm run typecheck", "npm run lint", "npm run build"]) {
+    assert.ok(workflow.indexOf(gate) < workflow.indexOf("publish.mjs"), `${gate} must run before publish`);
+  }
   assert.match(publishBlock.body, /--catalog catalog\/v2\/catalog\.json/);
   assert.match(publishBlock.body, /--jars "\$RUNNER_TEMP\/market-jars\/jars\.json"/);
   assert.match(publishBlock.body, /--key-id turboism-official-v1/);
@@ -572,13 +574,24 @@ test("publisher workflow static assertions: automated lane inputs, all-or-none g
     });
   const step = (name) => stepBlocks.find((s) => s.name === name);
 
-  // The three optional string inputs are all-or-none with empty defaults.
+  // Protected source-lane dispatch contract: exactly the three optional
+  // strings emitted by Turboism core, with no Provider-only additions.
   const inputsBlock = workflow.match(/^on:\n((?:[ \t]+\S[^\n]*\n?)*)/m)[1];
-  for (const input of ["source_run_id", "source_sha", "artifact_name"]) {
+  const dispatchInputs = [...inputsBlock.matchAll(/^      ([a-z0-9_]+):$/gm)].map((match) => match[1]);
+  assert.deepEqual(dispatchInputs, ["source_run_id", "source_sha", "artifact_name"]);
+  for (const input of dispatchInputs) {
     assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+(?:description|required|type|default):[^\n]*\\n)+`));
     assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+[^\n]*\\n)*[ \t]+type: string`));
+    assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+[^\n]*\\n)*[ \t]+required: false`));
     assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+[^\n]*\\n)*[ \t]+default: ""`));
   }
+  // Turboism core dispatches this exact Provider workflow/ref with these exact
+  // JSON input names; keep the protected source-lane contract visible here.
+  assert.match(workflow, /workflow_dispatch ONLY/);
+  assert.match(workflow, /\.github\/workflows\/publish-selected-plugins\.yml on main/);
+  assert.match(workflow, /this exact workflow filename\/ref and input set/);
+  assert.match(workflow, /source_run_id, source_sha, and/);
+  assert.match(workflow, /artifact_name/);
   const gate = step("Validate dispatch inputs are all-or-none");
   assert.ok(gate, "all-or-none gate step must exist");
   // R1: inputs are evaluated in YAML env: values only; run: blocks reference

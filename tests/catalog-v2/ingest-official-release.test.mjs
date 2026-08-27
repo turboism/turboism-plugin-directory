@@ -7,15 +7,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, generateKeyPairSync } from "node:crypto";
 import { deflateRawSync, crc32 } from "node:zlib";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import http from "node:http";
 import { once } from "node:events";
-import { loadTrustedKeys, stringifyCanonical, validateCatalogBytes, verifyCatalogBytes } from "../../lib/catalog-v2/catalog.mjs";
-import { checkTentativeCapacity } from "../../scripts/catalog-v2/ingest-official-release.mjs";
+import { loadTrustedKeys, signCatalogBytes, stringifyCanonical, validateCatalogBytes, verifyCatalogBytes } from "../../lib/catalog-v2/catalog.mjs";
+import { checkTentativeCapacity, redirectSafeFetch } from "../../scripts/catalog-v2/ingest-official-release.mjs";
 import { makeAllowlist, makeKeyPair, makeZip, makeCatalog, makePlugin, makeRelease } from "./fixtures.mjs";
 
 const ROOT = path.join(process.cwd());
@@ -291,6 +291,8 @@ class ApiStub {
     this.releases = new Map(); // tag -> release object
     this.assetBytes = new Map(); // `${tag}/${asset}` -> Buffer
     this.redirectDownload = null; // { from: tag/asset, to: url } for redirect-failure tests
+    this.redirects = new Map(); // path -> { status, location }
+    this.rawResponses = new Map(); // path -> { status, headers, body }
     this.log = []; // { method, path, auth, contentType }
     this.nextId = 100;
     this.server = http.createServer((req, res) => this.handle(req, res));
@@ -354,6 +356,18 @@ class ApiStub {
   route(method, url, body, res) {
     const p = url.pathname;
     let match;
+
+    const raw = this.rawResponses.get(p);
+    if (raw !== undefined) {
+      const bytes = Buffer.isBuffer(raw.body) ? raw.body : Buffer.from(raw.body ?? "", "utf8");
+      res.writeHead(raw.status ?? 200, { "Content-Length": bytes.length, ...(raw.headers ?? {}) });
+      return res.end(bytes);
+    }
+    const redirect = this.redirects.get(p);
+    if (redirect !== undefined) {
+      res.writeHead(redirect.status ?? 302, { Location: redirect.location });
+      return res.end();
+    }
 
     if (method === "GET" && (match = /^\/repos\/turboism\/Turboism\/actions\/runs\/(\d+)$/.exec(p))) {
       const run = this.runs.get(match[1]);
@@ -541,6 +555,85 @@ test("verify-run fails on failed conclusion, missing artifact, ambiguity, and ti
   } finally {
     await stub.stop();
   }
+});
+
+test("verify-run follows only bounded same-approved-host redirects and rejects unapproved hops", async () => {
+  const dir = tempDir();
+  const stub = new ApiStub();
+  const base = await stub.start();
+  try {
+    const bundle = buildBundle(dir, [backupArtifact()]);
+    const zip = makeRawZip([
+      { name: "market-release.json", data: readFileSync(bundle.sidecarPath), externalAttrs: 0o100644 * 0x10000 },
+      { name: "backup-0.1.0.jar", data: readFileSync(path.join(bundle.bundleDir, "backup-0.1.0.jar")), externalAttrs: 0o100644 * 0x10000 },
+    ]);
+    stub.runs.set("123", makeRun());
+    const artifact = makeArtifact({ zip });
+    artifact.archive_download_url = `${base}/artifact-entry`;
+    stub.artifacts.set("77", artifact);
+    stub.redirects.set("/artifact-entry", { status: 302, location: "/artifact-final" });
+    stub.rawResponses.set("/artifact-final", { status: 200, headers: { "Content-Type": "application/zip" }, body: zip });
+
+    let result = await runIngest(verifyArgs(base, { out: path.join(dir, "redirect-ok") }), {
+      env: { TURBOISM_RELEASE_ARTIFACT_READ_TOKEN: "source-read-token" },
+    });
+    assert.ok(result.ok, result.stderr);
+    assert.ok(stub.log.some((entry) => entry.path === "/artifact-entry"));
+    assert.ok(stub.log.some((entry) => entry.path === "/artifact-final"));
+
+    stub.redirects.set("/artifact-entry", { status: 302, location: "http://127.0.0.1:1/unapproved" });
+    result = await runIngest(verifyArgs(base, { out: path.join(dir, "redirect-bad") }), {
+      env: { TURBOISM_RELEASE_ARTIFACT_READ_TOKEN: "source-read-token" },
+      expectFailure: true,
+    });
+    assert.match(result.stderr, /redirect target host .* is not approved/);
+  } finally {
+    await stub.stop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("verify-run enforces the redirect hop cap", async () => {
+  const dir = tempDir();
+  const stub = new ApiStub();
+  const base = await stub.start();
+  try {
+    stub.runs.set("123", makeRun());
+    const artifact = makeArtifact({ zip: Buffer.from("unused") });
+    artifact.archive_download_url = `${base}/hop-0`;
+    stub.artifacts.set("77", artifact);
+    for (let index = 0; index <= 5; index += 1) {
+      stub.redirects.set(`/hop-${index}`, { status: 302, location: `/hop-${index + 1}` });
+    }
+    const result = await runIngest(verifyArgs(base, { out: path.join(dir, "redirect-cap") }), {
+      env: { TURBOISM_RELEASE_ARTIFACT_READ_TOKEN: "source-read-token" },
+      expectFailure: true,
+    });
+    assert.match(result.stderr, /exceeded the 5-redirect cap/);
+  } finally {
+    await stub.stop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("redirect-safe fetch forbids an HTTPS downgrade before the downgraded request", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async (url) => {
+    calls.push(String(url));
+    return new Response(null, { status: 302, headers: { Location: "http://localhost/final" } });
+  };
+  await assert.rejects(
+    redirectSafeFetch("https://localhost/start", {
+      approvedHosts: new Set(["localhost"]),
+      allowHttp: true,
+    }),
+    /downgrades HTTPS/,
+  );
+  assert.deepEqual(calls, ["https://localhost/start"]);
 });
 
 test("verify-run rejects traversal, absolute-path, symlink, and oversize zip entries", async () => {
@@ -1121,10 +1214,10 @@ test("hydrate reuses bundle bytes only on an exact match and fails on hash/size/
     result = await runIngest(["hydrate", "--catalog", sourceCatalog, "--dir", jarsDir, "--manifest-out", manifestOut, "--asset-base", base], { expectFailure: true });
     assert.match(result.stderr, /download failed: 404/);
 
-    // Redirect to an unreachable target fails.
+    // Redirect to an unapproved host fails before any second request.
     stub.redirectDownload = { from: `${tag}/${entry.asset}`, to: "http://127.0.0.1:1/dead.jar" };
     result = await runIngest(["hydrate", "--catalog", sourceCatalog, "--dir", jarsDir, "--manifest-out", manifestOut, "--asset-base", base], { expectFailure: true });
-    assert.match(result.stderr, /request to .* failed/);
+    assert.match(result.stderr, /redirect target host .* is not approved/);
   } finally {
     await stub.stop();
     rmSync(dir, { recursive: true, force: true });
@@ -1154,6 +1247,94 @@ test("hydrate rejects a symlinked bundle JAR on the reuse path and hydrates manu
     const manual = await runIngest(["hydrate", "--catalog", sourceCatalog, "--dir", path.join(dir, "jars2"), "--manifest-out", path.join(dir, "jars2.json"), "--asset-base", base]);
     assert.ok(manual.ok, manual.stderr);
     assert.deepEqual(readFileSync(path.join(dir, "jars2", `backup-${entry.descriptor.version}.jar`)), entry.jarBytes);
+  } finally {
+    await stub.stop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// verify-production
+// ---------------------------------------------------------------------------
+
+function productionPair(catalog) {
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const publicPem = publicKey.export({ type: "spki", format: "pem" });
+  const privatePem = privateKey.export({ type: "pkcs8", format: "pem" });
+  const catalogBytes = Buffer.from(stringifyCanonical(catalog, "catalog"), "utf8");
+  const signed = signCatalogBytes(catalogBytes, privatePem, "turboism-official-v1");
+  assert.ok(signed.ok);
+  return {
+    catalogBytes,
+    signatureBytes: Buffer.from(stringifyCanonical(signed.envelope, "signatureEnvelope"), "utf8"),
+    allowlist: { "turboism-official-v1": { pem: publicPem, purpose: "production" } },
+  };
+}
+
+test("verify-production proves identity encoding and reports honest zero JAR evidence for an empty catalog", async () => {
+  const dir = tempDir();
+  const stub = new ApiStub();
+  const base = await stub.start();
+  try {
+    const pair = productionPair(emptyCatalog(1));
+    stub.rawResponses.set("/api/v2/catalog.json", {
+      headers: { "Content-Type": "application/vnd.turboism.plugin-catalog+json;version=2" },
+      body: pair.catalogBytes,
+    });
+    stub.rawResponses.set("/api/v2/catalog.json.sig", {
+      headers: { "Content-Type": "application/vnd.turboism.plugin-catalog-signature+json;version=2" },
+      body: pair.signatureBytes,
+    });
+    const keysFile = path.join(dir, "trusted-keys.json");
+    writeFileSync(keysFile, JSON.stringify(pair.allowlist));
+    const result = await runIngest(["verify-production", "--base-url", base, "--keys", keysFile]);
+    assert.ok(result.ok, result.stderr);
+    assert.match(result.stdout, /identity catalog bytes \d+/);
+    assert.match(result.stdout, /anonymous JARs measured 0/);
+    for (const call of stub.log.filter((entry) => entry.path.startsWith("/api/v2/"))) {
+      assert.equal(call.auth, null, "production verification must be anonymous");
+    }
+  } finally {
+    await stub.stop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("verify-production rejects encoded catalog bytes, redirect escape, and hop overflow", async () => {
+  const dir = tempDir();
+  const stub = new ApiStub();
+  const base = await stub.start();
+  try {
+    const pair = productionPair(emptyCatalog(1));
+    const keysFile = path.join(dir, "trusted-keys.json");
+    writeFileSync(keysFile, JSON.stringify(pair.allowlist));
+    stub.rawResponses.set("/api/v2/catalog.json", {
+      headers: {
+        "Content-Type": "application/vnd.turboism.plugin-catalog+json;version=2",
+        "Content-Encoding": "gzip",
+      },
+      body: pair.catalogBytes,
+    });
+    stub.rawResponses.set("/api/v2/catalog.json.sig", {
+      headers: { "Content-Type": "application/vnd.turboism.plugin-catalog-signature+json;version=2" },
+      body: pair.signatureBytes,
+    });
+    let result = await runIngest(["verify-production", "--base-url", base, "--keys", keysFile], { expectFailure: true });
+    assert.match(result.stderr, /returned Content-Encoding/);
+
+    stub.rawResponses.delete("/api/v2/catalog.json");
+    stub.redirects.set("/api/v2/catalog.json", { location: "http://127.0.0.1:1/catalog.json" });
+    result = await runIngest(["verify-production", "--base-url", base, "--keys", keysFile], { expectFailure: true });
+    assert.match(result.stderr, /redirect target host .* is not approved/);
+
+    stub.redirects.clear();
+    for (let index = 0; index <= 5; index += 1) {
+      stub.redirects.set(index === 0 ? "/api/v2/catalog.json" : `/catalog-hop-${index}`, {
+        location: `/catalog-hop-${index + 1}`,
+      });
+    }
+    result = await runIngest(["verify-production", "--base-url", base, "--keys", keysFile], { expectFailure: true });
+    assert.match(result.stderr, /exceeded the 5-redirect cap/);
   } finally {
     await stub.stop();
     rmSync(dir, { recursive: true, force: true });

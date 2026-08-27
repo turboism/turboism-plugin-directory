@@ -1,6 +1,6 @@
 # Turboism Plugin Directory API v2
 
-Status: **Frozen review candidate; not yet authorized for production**
+Status: **Frozen production contract; provider implementation is production-ready, activation remains provisioning-gated**
 Canonical origin: `https://plugin.turboism.dev`
 Machine-readable contract: [`openapi/plugin-directory-v2.openapi.json`](openapi/plugin-directory-v2.openapi.json)
 
@@ -329,4 +329,14 @@ Automated checks must prove:
 11. tampered catalog/signature/hash/key/JAR/descriptor/category/tag fixtures fail closed;
 12. production identity encoding and anonymous JAR download are measured after key/catalog provisioning.
 
-Provider fixtures do not constitute production endpoint or JAR evidence.
+The implementation is production-ready only while gates 1–11 and the repository lint, typecheck, and build gates pass. Activation requires gate 12 to run against the deployed canonical origin with the committed production allowlist. Run:
+
+```bash
+node scripts/catalog-v2/ingest-official-release.mjs verify-production \
+  --base-url https://plugin.turboism.dev \
+  --keys lib/catalog-v2/trusted-keys.json
+```
+
+This gate requires exact identity-encoded catalog/signature bytes, production-key verification, redirect-safe HTTPS downloads confined to the approved GitHub Release host set, and anonymous size/SHA-256 verification for every cataloged JAR. A legitimately empty verified catalog reports zero measured JARs; that is not non-empty JAR evidence and MUST NOT be represented as such.
+
+Provider fixtures do not constitute production endpoint or JAR evidence. The current catalog remains intentionally empty until a reviewed official release is provisioned; no catalog entry or anonymous JAR evidence may be fabricated.

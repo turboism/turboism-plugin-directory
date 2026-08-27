@@ -2,6 +2,7 @@
   "name": "turboism-plugin-directory",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "node scripts/dev-with-tunnel.mjs",
     "dev:local": "next dev",

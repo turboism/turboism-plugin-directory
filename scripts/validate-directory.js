@@ -3,7 +3,9 @@
  * Validate the plugin directory entries before merge.
  * Fails CI when an entry is malformed, duplicated, or missing required fields.
  */
-const { plugins } = require("../lib/directory.json");
+import directory from "../lib/directory.json" with { type: "json" };
+
+const { plugins } = directory;
 
 const REQUIRED_FIELDS = [
   "slug",

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
@@ -100,11 +100,7 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   const { copy } = useLanguage();
-  const [year, setYear] = useState(2025);
-  
-  useEffect(() => {
-    setYear(new Date().getFullYear());
-  }, []);
+  const year = new Date().getFullYear();
 
   return (
     <footer className="relative z-10 border-t border-slate-100/50 bg-white/20 backdrop-blur-sm py-12 mt-auto">

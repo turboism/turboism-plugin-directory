@@ -41,7 +41,7 @@ export default async function PluginDetailPage({ params }: { params: Promise<{ s
           {plugin.summary}
         </p>
         
-        <section className={`flex gap-4 p-6 rounded-2xl border ${plugin.verification === "verified" ? "bg-emerald-50/50 border-emerald-100" : "bg-slate-50 border-slate-200"} mb-6`}>
+        <section className={`flex gap-4 p-6 rounded-2xl border bg-white/60 backdrop-blur-sm shadow-sm ${plugin.verification === "verified" ? "border-emerald-200/70" : "border-slate-200/70"} mb-6`}>
           <CircleCheck size={24} className={plugin.verification === "verified" ? "text-emerald-500" : "text-slate-400"} />
           <div>
             <strong className="block text-slate-900 font-bold mb-1">
@@ -54,7 +54,7 @@ export default async function PluginDetailPage({ params }: { params: Promise<{ s
         </section>
         
         {plugin.warning && (
-          <div className="flex gap-4 p-6 rounded-2xl border bg-amber-50/50 border-amber-200 mb-10">
+          <div className="flex gap-4 p-6 rounded-2xl border bg-amber-50/60 backdrop-blur-sm border-amber-200/70 mb-10">
             <AlertTriangle size={24} className="text-amber-500" />
             <p className="text-amber-800 text-sm">{plugin.warning}</p>
           </div>
@@ -71,7 +71,7 @@ export default async function PluginDetailPage({ params }: { params: Promise<{ s
           </div>
           <div className="col-span-1 md:col-span-2">
             <dt className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">Release checksum</dt>
-            <dd className="font-mono text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 overflow-x-auto">
+            <dd className="font-mono text-sm text-slate-600 bg-slate-50/80 px-3 py-2.5 rounded-xl border border-slate-200/80 overflow-x-auto">
               {plugin.checksum}
             </dd>
           </div>
@@ -98,7 +98,7 @@ export default async function PluginDetailPage({ params }: { params: Promise<{ s
             href={plugin.releaseUrl} 
             target="_blank" 
             rel="noreferrer" 
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 text-white px-8 py-4 text-lg font-medium shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-1 transition-all"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 text-white px-8 py-4 text-lg font-medium shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-1 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2"
           >
             Get verified release <ArrowUpRight size={20} />
           </a>

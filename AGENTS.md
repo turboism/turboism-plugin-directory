@@ -8,6 +8,6 @@ This repository owns `plugin.turboism.dev` and is intended for `github.com/turbo
 - Entry data must remain structured, Git-reviewed, and controlled by the Turboism team.
 - Directory copy must distinguish Official from Reviewed third-party, and never imply security certification or ongoing compatibility support.
 - Interface text must be English/Chinese; authoritative content for future entries remains English-first.
-- This site is dark-only and uses the restrained Turboism developer-tool visual language.
+- This site must match `www.turboism.dev`'s light sacred visual language: white base, sacred texture, Geist, Klein-blue accents, amber reserved for the shared brand gradient and semantic warning states, translucent glass surfaces, and the shared header/footer DOM and classes.
 - Before changing Next.js routing or APIs, read the matching document in `node_modules/next/dist/docs/`.
 - When starting a preview server, also expose it via a public tunnel and share that URL.

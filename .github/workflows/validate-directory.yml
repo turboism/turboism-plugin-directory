@@ -1,0 +1,29 @@
+name: validate-plugin-directory
+
+on:
+  pull_request:
+    paths:
+      - "lib/directory.json"
+      - "scripts/validate-directory.js"
+  push:
+    branches: [main]
+    paths:
+      - "lib/directory.json"
+      - "scripts/validate-directory.js"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validate directory entries
+        run: node scripts/validate-directory.js
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build

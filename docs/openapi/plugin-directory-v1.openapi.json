@@ -1,0 +1,1093 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Turboism Plugin Directory API",
+    "version": "1.0.0",
+    "description": "Versioned discovery API and signed catalog contract for Turboism plugin JARs. The complete catalog is authoritative only after detached Ed25519 signature verification; the dynamic search response is discovery-only."
+  },
+  "servers": [
+    {
+      "url": "https://plugin.turboism.dev"
+    }
+  ],
+  "paths": {
+    "/api/v1/catalog.json": {
+      "get": {
+        "operationId": "getPluginCatalogV1",
+        "summary": "Fetch the complete catalog bytes",
+        "description": "Clients verifying exact bytes send Accept-Encoding: identity and verify the detached signature before parsing.",
+        "responses": {
+          "200": {
+            "description": "Complete plugin catalog",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/vnd.turboism.plugin-catalog+json;version=1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PluginCatalog"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PluginCatalog"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "500": {
+            "$ref": "#/components/responses/CatalogInvalid"
+          },
+          "503": {
+            "$ref": "#/components/responses/CatalogUnavailable"
+          }
+        }
+      },
+      "head": {
+        "operationId": "headPluginCatalogV1",
+        "summary": "Inspect complete catalog metadata",
+        "responses": {
+          "200": {
+            "description": "Catalog headers without a response body",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog.json.sig": {
+      "get": {
+        "operationId": "getPluginCatalogSignatureV1",
+        "summary": "Fetch the catalog detached-signature envelope",
+        "responses": {
+          "200": {
+            "description": "Detached-signature envelope",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/vnd.turboism.plugin-catalog-signature+json;version=1": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSignature"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSignature"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "503": {
+            "$ref": "#/components/responses/CatalogUnavailable"
+          }
+        }
+      },
+      "head": {
+        "operationId": "headPluginCatalogSignatureV1",
+        "summary": "Inspect signature metadata",
+        "responses": {
+          "200": {
+            "description": "Signature headers without a response body",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          }
+        }
+      }
+    },
+    "/api/v1/plugins": {
+      "get": {
+        "operationId": "searchPluginsV1",
+        "summary": "Search and page through active plugin releases",
+        "description": "Discovery-only response. Installation metadata must be re-resolved from a verified complete catalog.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "trust",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/components/schemas/Trust"
+              }
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/components/schemas/Tag"
+              }
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/components/schemas/Channel"
+              }
+            }
+          },
+          {
+            "name": "turboismApi",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StrictVersion"
+            }
+          },
+          {
+            "name": "cubismVersion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HostVersion"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              }
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Locale"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Sort"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filtered, sorted, paginated discovery result",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/SearchCacheControl"
+              }
+            },
+            "content": {
+              "application/vnd.turboism.plugin-search+json;version=1": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidQuery"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "500": {
+            "$ref": "#/components/responses/CatalogInvalid"
+          },
+          "503": {
+            "$ref": "#/components/responses/CatalogUnavailable"
+          }
+        }
+      },
+      "head": {
+        "operationId": "headPluginSearchV1",
+        "summary": "Inspect discovery response metadata",
+        "responses": {
+          "200": {
+            "description": "Discovery response headers without a body",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/SearchCacheControl"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "headers": {
+      "ETag": {
+        "description": "Opaque validator for this exact representation",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "CacheControl": {
+        "description": "Catalog cache policy",
+        "schema": {
+          "type": "string",
+          "example": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      },
+      "SearchCacheControl": {
+        "description": "Discovery response cache policy",
+        "schema": {
+          "type": "string",
+          "example": "public, max-age=60, stale-while-revalidate=300"
+        }
+      }
+    },
+    "responses": {
+      "NotModified": {
+        "description": "The representation matches If-None-Match; no body is returned"
+      },
+      "InvalidQuery": {
+        "description": "Invalid or unsupported query",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "NotAcceptable": {
+        "description": "Requested representation is unsupported",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "CatalogInvalid": {
+        "description": "The deployed catalog failed validation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "CatalogUnavailable": {
+        "description": "The catalog could not be read",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "StrictVersion": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+        "examples": [
+          "0.1.0"
+        ]
+      },
+      "VersionRange": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StrictVersion"
+          },
+          {
+            "type": "string",
+            "pattern": "^\\[(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*),(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\)$"
+          }
+        ],
+        "examples": [
+          "0.1.0",
+          "[0.1.0,0.2.0)"
+        ]
+      },
+      "HostVersion": {
+        "type": "string",
+        "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+        "examples": [
+          "5.3.02"
+        ]
+      },
+      "Sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "PluginId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+      },
+      "Slug": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "Tag": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50,
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "Trust": {
+        "type": "string",
+        "enum": [
+          "official",
+          "reviewed-third-party"
+        ]
+      },
+      "Channel": {
+        "type": "string",
+        "enum": [
+          "stable",
+          "preview"
+        ]
+      },
+      "ReleaseStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "yanked"
+        ]
+      },
+      "Platform": {
+        "type": "string",
+        "enum": [
+          "windows-x64"
+        ]
+      },
+      "Locale": {
+        "type": "string",
+        "enum": [
+          "en",
+          "zh-Hans",
+          "ja"
+        ],
+        "default": "en"
+      },
+      "Sort": {
+        "type": "string",
+        "enum": [
+          "published-desc",
+          "updated-desc",
+          "name-asc",
+          "name-desc"
+        ],
+        "default": "published-desc"
+      },
+      "LocalizedMetadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "summary"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "Localizations": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "zh-Hans": {
+            "$ref": "#/components/schemas/LocalizedMetadata"
+          },
+          "ja": {
+            "$ref": "#/components/schemas/LocalizedMetadata"
+          }
+        }
+      },
+      "PluginDependency": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "type",
+          "ordering"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/PluginId"
+          },
+          "version": {
+            "$ref": "#/components/schemas/VersionRange"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "required",
+              "optional"
+            ]
+          },
+          "ordering": {
+            "type": "string",
+            "enum": [
+              "none",
+              "before",
+              "after"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "PluginPermission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "scope",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/PluginId"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "application",
+              "user"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "Artifact": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fileName",
+          "mediaType",
+          "url",
+          "sha256",
+          "descriptorSha256",
+          "size"
+        ],
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 255,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.jar$"
+          },
+          "mediaType": {
+            "const": "application/java-archive"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "descriptorSha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16777216
+          }
+        }
+      },
+      "PluginRelease": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "channel",
+          "status",
+          "publishedAt",
+          "turboismApi",
+          "requiresCubism",
+          "cubismVersions",
+          "platforms",
+          "dependencies",
+          "permissions",
+          "releaseUrl",
+          "artifact"
+        ],
+        "properties": {
+          "version": {
+            "$ref": "#/components/schemas/StrictVersion"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/Channel"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReleaseStatus"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "turboismApi": {
+            "$ref": "#/components/schemas/VersionRange"
+          },
+          "requiresCubism": {
+            "type": "boolean"
+          },
+          "cubismVersions": {
+            "type": "array",
+            "maxItems": 100,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/HostVersion"
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/PluginDependency"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/PluginPermission"
+            }
+          },
+          "releaseUrl": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "sourceRevision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "artifact": {
+            "$ref": "#/components/schemas/Artifact"
+          }
+        }
+      },
+      "Plugin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "summary",
+          "trust",
+          "author",
+          "license",
+          "repository",
+          "support",
+          "tags",
+          "localizations",
+          "releases"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/PluginId"
+          },
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
+          },
+          "author": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "license": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "repository": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "support": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "tags": {
+            "type": "array",
+            "maxItems": 50,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          },
+          "localizations": {
+            "$ref": "#/components/schemas/Localizations"
+          },
+          "releases": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/PluginRelease"
+            }
+          }
+        }
+      },
+      "PluginCatalog": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "format",
+          "schemaVersion",
+          "catalogVersion",
+          "publishedAt",
+          "plugins"
+        ],
+        "properties": {
+          "format": {
+            "const": "turboism.plugin.catalog"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "catalogVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "plugins": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/Plugin"
+            }
+          }
+        }
+      },
+      "CatalogSignature": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "format",
+          "schemaVersion",
+          "algorithm",
+          "keyId",
+          "catalogSha256",
+          "signature"
+        ],
+        "properties": {
+          "format": {
+            "const": "turboism.plugin.catalog.signature"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "algorithm": {
+            "const": "Ed25519"
+          },
+          "keyId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "catalogSha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "signature": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "minLength": 88,
+            "maxLength": 88
+          }
+        }
+      },
+      "NormalizedQuery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "q",
+          "trust",
+          "tags",
+          "channels",
+          "platforms",
+          "locale",
+          "sort"
+        ],
+        "properties": {
+          "q": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "trust": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Trust"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          },
+          "channels": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Channel"
+            }
+          },
+          "turboismApi": {
+            "$ref": "#/components/schemas/StrictVersion"
+          },
+          "cubismVersion": {
+            "$ref": "#/components/schemas/HostVersion"
+          },
+          "platforms": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "locale": {
+            "$ref": "#/components/schemas/Locale"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/Sort"
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "page",
+          "pageSize",
+          "totalItems",
+          "totalPages",
+          "hasPrevious",
+          "hasNext"
+        ],
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "totalItems": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SearchItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "slug",
+          "displayName",
+          "displaySummary",
+          "trust",
+          "author",
+          "license",
+          "repository",
+          "support",
+          "tags",
+          "latestCompatibleRelease"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/PluginId"
+          },
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "displaySummary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
+          },
+          "author": {
+            "type": "string"
+          },
+          "license": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "string",
+            "format": "uri"
+          },
+          "support": {
+            "type": "string",
+            "format": "uri"
+          },
+          "tags": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          },
+          "latestCompatibleRelease": {
+            "$ref": "#/components/schemas/PluginRelease"
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "format",
+          "schemaVersion",
+          "catalogVersion",
+          "query",
+          "pagination",
+          "items"
+        ],
+        "properties": {
+          "format": {
+            "const": "turboism.plugin.search"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "catalogVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "query": {
+            "$ref": "#/components/schemas/NormalizedQuery"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/SearchItem"
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "invalid_query",
+              "not_acceptable",
+              "catalog_invalid",
+              "catalog_unavailable"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "field": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    }
+  }
+}

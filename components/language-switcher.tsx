@@ -13,7 +13,7 @@ const labels: Record<Language, string> = {
 const options: Language[] = ["en", "zh", "ja"];
 
 export function LanguageSwitcher() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, copy } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -35,8 +35,8 @@ export function LanguageSwitcher() {
       <button
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label="Language"
-        className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors hover:bg-slate-100/80"
+        aria-label={copy.selectLanguage}
+        className="flex min-h-11 items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors hover:bg-slate-100/80"
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
@@ -51,7 +51,7 @@ export function LanguageSwitcher() {
           {options.map((locale) => (
             <button
               aria-selected={locale === language}
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
+              className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
                 locale === language
                   ? "font-semibold text-blue-600"
                   : "text-slate-700 hover:bg-slate-100"

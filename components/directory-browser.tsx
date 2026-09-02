@@ -112,7 +112,7 @@ function PluginCard({ plugin }: { plugin: PluginEntry }) {
   const trust = isOfficial ? copy.official : copy.reviewed;
 
   return (
-    <Link href={`/plugins/${plugin.slug}`} className="group flex flex-col p-6 rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm shadow-sm transition-all hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-200 hover:-translate-y-1">
+    <Link href={`/${plugin.slug}`} className="group flex flex-col p-6 rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm shadow-sm transition-all hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-200 hover:-translate-y-1">
       <div className="flex items-start justify-between mb-4">
         <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider border ${isOfficial ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
           {trust}

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  return { rules: { userAgent: "*", allow: "/" }, sitemap: "https://plugin.turboism.dev/sitemap.xml" };
+  return { rules: { userAgent: "*", allow: "/plugins/" }, sitemap: "https://turboism.dev/plugins/sitemap.xml" };
 }

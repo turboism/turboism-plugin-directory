@@ -13,7 +13,11 @@
     "test:http:catalog": "node --test tests/catalog-v2/http.test.mjs",
     "validate:directory": "node scripts/validate-directory.js",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release:check": "npm test && npm run validate:directory && npm run lint && npm run typecheck",
+    "release:build": "npm run release:check && npx --yes vercel@59.10.0 build --prod",
+    "verify:deployment": "npx --yes vercel@59.10.0 inspect --wait --timeout=5m",
+    "verify:production": "npm run verify:deployment -- https://plugin.turboism.dev"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",

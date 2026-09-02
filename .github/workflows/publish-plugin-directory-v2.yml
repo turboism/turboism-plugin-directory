@@ -129,10 +129,7 @@ jobs:
       - name: Run repository gates
         run: |
           set -euo pipefail
-          npm test
-          npm run validate:directory
-          npm run typecheck
-          npm run lint
+          npm run release:check
           npm run build
 
       - name: Verify source run and download its artifact

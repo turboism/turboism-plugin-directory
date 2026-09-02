@@ -5,13 +5,14 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThanksStarLink } from "@/components/thanks-star-link";
 
 const networks = [
-  { key: "home", href: "https://www.turboism.dev" },
-  { key: "docs", href: "https://docs.turboism.dev" },
-  { key: "sdk", href: "https://docs.turboism.dev/api/sdk/index.html" },
-  { key: "plugins", href: "https://plugin.turboism.dev" },
-  { key: "learn", href: "https://learn.turboism.dev" },
+  { key: "home", href: "https://turboism.dev" },
+  { key: "docs", href: "https://turboism.dev/docs" },
+  { key: "sdk", href: "https://turboism.dev/docs/api/sdk/index.html" },
+  { key: "plugins", href: "https://turboism.dev/plugins" },
+  { key: "learn", href: "https://turboism.dev/learn" },
   { key: "chat", href: "https://chat.turboism.dev" },
   { key: "download", href: "https://github.com/turboism/turboism/releases" },
   { key: "github", href: "https://github.com/turboism" },
@@ -28,6 +29,7 @@ export function SiteHeader() {
           <Link href="/" className="flex shrink-0 items-center font-sans text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-amber-400 bg-clip-text text-transparent">
             Turboism
           </Link>
+          <ThanksStarLink />
         </div>
         
         <nav className="hidden min-w-0 flex-1 items-center justify-center gap-5 xl:flex xl:gap-6">
@@ -123,7 +125,7 @@ export function SiteFooter() {
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3 text-sm text-slate-500/80">
-            <Link href="https://www.turboism.dev" className="font-sans font-medium text-slate-600 hover:text-slate-900 transition-colors">
+            <Link href="https://turboism.dev" className="font-sans font-medium text-slate-600 hover:text-slate-900 transition-colors">
               Turboism
             </Link>
             <span className="text-slate-300">|</span>

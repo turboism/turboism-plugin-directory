@@ -8,10 +8,10 @@ const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://plugin.turboism.dev"),
+  metadataBase: new URL("https://turboism.dev"),
   title: { default: "Turboism Plugin Directory", template: "%s · Turboism Plugins" },
   description: "The curated public directory for Turboism plugins.",
-  alternates: { canonical: "/" },
+  alternates: { canonical: "/plugins" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

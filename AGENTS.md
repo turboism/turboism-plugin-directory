@@ -1,8 +1,8 @@
 # Plugin Directory Project Rules
 
-This repository owns `plugin.turboism.dev` and is intended for `github.com/turboism/turboism-plugin-directory`.
+This repository owns the independently deployed plugin directory, canonically mounted at `turboism.dev/plugins`; `plugin.turboism.dev` is a legacy redirect and gateway origin.
 
-- Keep this site independent from `www/`, `docs/`, and `learn/` at runtime.
+- Keep this site independent from `www/`, `docs/`, and `learn/` at runtime; the apex site proxies `/plugins/*` to this deployment.
 - This is a curated Plugin Directory, not a marketplace, registry, package host, or self-service publishing system.
 - The initial directory may be empty. Never fill it with planned, experimental, unavailable, or unverified placeholder entries.
 - Entry data must remain structured, Git-reviewed, and controlled by the Turboism team.

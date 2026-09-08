@@ -1,0 +1,66 @@
+name: Integrate unified site shell
+on:
+  push:
+    branches: [style/all-sites-20260908]
+    paths: [.github/workflows/integrate-brand.yml]
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: style/all-sites-20260908
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Vendor and integrate the reviewed shell
+        run: |
+          set -euo pipefail
+          git init "$RUNNER_TEMP/brand-source"
+          git -C "$RUNNER_TEMP/brand-source" fetch --depth=1 https://github.com/turboism/turboism-docs.git 69ce5385e89ec3d621257981433939b3629f5e2d
+          git -C "$RUNNER_TEMP/brand-source" checkout --detach FETCH_HEAD
+          cp "$RUNNER_TEMP/brand-source/brand/"* brand/
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('app/layout.tsx');s=p.read_text();s=re.sub(r'import \{[^\n]+\} from [\'\"]next/font/google[\'\"];',"import { brandFontVariables } from '@/brand/fonts';",s);s=re.sub(r'const geist(?:Sans|Mono)\s*=.*?;\n','',s);s=s.replace('${geistSans.variable} ${geistMono.variable}','${brandFontVariables}').replace("import '@/brand/brand.css';","import '@/brand/brand.css';\nimport '@/brand/typography.css';");s=s.replace('{ SiteFooter, SiteHeader }','{ SiteFooter, SiteHeader, SiteActions }').replace('<main className="flex-1 relative z-10">{children}</main>','<main className="tb-directory-main flex-1 relative z-10 pt-20"><SiteActions/>{children}</main>');p.write_text(s)
+          p=Path('components/site-shell.tsx');p.write_text('''"use client";
+          import { BrandHeader, BrandLanguage } from '@/brand/shell';
+          import { useLanguage } from '@/components/language-provider';
+          export { BrandFooter as SiteFooter } from '@/brand/shell';
+          export function SiteHeader(){const {language,setLanguage}=useLanguage();return <BrandHeader active="plugins" locale={language} languageControl={<BrandLanguage locale={language} onChange={setLanguage}/>}/>;}
+          export function SiteActions(){const {copy}=useLanguage();return <div className="tb-page-tools"><a className="tb-action" href="https://github.com/turboism/turboism-plugin-directory/issues/new?template=plugin-nomination.md" target="_blank" rel="noopener noreferrer">{copy.nominate}</a><a className="tb-action" href="https://github.com/turboism/turboism-plugin-directory/issues/new?template=plugin-request.md" target="_blank" rel="noopener noreferrer">{copy.request}</a></div>;}
+          ''')
+          p=Path('app/globals.css');p.write_text(p.read_text()+'\n.tb-directory-main>section{padding-top:1.5rem}\n')
+          p=Path('components/language-provider.tsx');p.write_text(p.read_text().replace('window.location.hostname.endsWith(".turboism.dev")','(window.location.hostname === "turboism.dev" || window.location.hostname.endsWith(".turboism.dev"))'))
+          PY
+          git diff --check
+          git add brand app components/site-shell.tsx components/language-provider.tsx
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'style: match homepage fonts and navigation; move plugin actions into the page'
+      - run: npm ci
+      - run: node --test brand/brand.test.mjs
+      - run: npm run release:check
+      - run: npm run build
+      - name: Browser verification
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/brand-qa/node_modules/playwright
+          BRAND_SITE: plugins
+          BRAND_ROUTE: /plugins
+        run: |
+          npm install --prefix "$RUNNER_TEMP/brand-qa" playwright@1.61.1
+          "$RUNNER_TEMP/brand-qa/node_modules/.bin/playwright" install --with-deps chromium
+          npm start > "$RUNNER_TEMP/site.log" 2>&1 &
+          node brand/verify-browser.mjs
+      - name: Publish only the tested review branch
+        run: |
+          git rev-parse HEAD > artifacts/brand/tested-commit.txt
+          git push origin HEAD:refs/heads/style/all-sites-20260908
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: unified-brand-checks
+          path: artifacts/brand

@@ -1,0 +1,23 @@
+name: Dispatch approved Violet production release
+on:
+  push:
+    branches: ['deploy/violet-20260908']
+    paths: ['.github/workflows/dispatch-violet-production.yml']
+permissions:
+  contents: read
+  actions: write
+jobs:
+  dispatch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Check approved main revision and trigger existing protected deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: 3fb9e8e49468f1f724621e3258ed0f6d2af6d44f
+        run: |
+          set -euo pipefail
+          actual="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$actual" = "$EXPECTED_SHA" || { echo 'Main changed; refusing to deploy a different revision.'; exit 1; }
+          printf '%s' '{"ref":"main"}' | gh api --method POST "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-production.yml/dispatches" --input -
+          echo 'Existing production workflow dispatched; its environment protections and provider credentials remain required.'

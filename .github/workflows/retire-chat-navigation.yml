@@ -1,0 +1,63 @@
+name: Verify retirement navigation
+on:
+  push:
+    branches: [fix/retire-chat-20260909]
+    paths: [.github/workflows/retire-chat-navigation.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: fix/retire-chat-20260909
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Regression first, then replace the retired navigation item
+        run: |
+          set -euo pipefail
+          cat > brand/retirement.test.mjs <<'JS'
+          import test from 'node:test';import assert from 'node:assert/strict';import{readFileSync}from'node:fs';
+          const read=n=>readFileSync(new URL(n,import.meta.url),'utf8');
+          test('no retired chat and sponsor uses www',()=>{const n=JSON.parse(read('navigation.json'));assert.ok(!n.links.some(([k,u])=>k==='chat'||u.includes('chat.turboism.dev')));assert.deepEqual(n.links.find(([k])=>k==='sponsor'),['sponsor','https://turboism.dev/sponsor']);for(const l of['en','zh','ja'])assert.ok(n.labels[l].sponsor);assert.doesNotMatch(read('shell.tsx'),/\| 'chat'/);});
+          JS
+          if node --test brand/retirement.test.mjs; then echo 'Expected old navigation to fail'; exit 1; fi
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('brand/navigation.json');n=json.loads(p.read_text());n['links']=[['sponsor','https://turboism.dev/sponsor'] if k=='chat' else [k,u] for k,u in n['links']]
+          for l,s in [('en','Sponsor'),('zh','赞助'),('ja','支援')]:n['labels'][l].pop('chat',None);n['labels'][l]['sponsor']=s
+          p.write_text(json.dumps(n,ensure_ascii=False,separators=(',',':'))+'\n')
+          p=Path('brand/shell.tsx');p.write_text(p.read_text().replace("| 'chat'","| 'sponsor'"))
+          p=Path('brand/brand.test.mjs');p.write_text(p.read_text().replace("'learn','chat','thanks'","'learn','sponsor','thanks'"))
+          p=Path('brand/verify-browser.mjs');p.write_text(p.read_text().replace("waitUntil:'networkidle'","waitUntil:'domcontentloaded'"))
+          PY
+          node --test brand/retirement.test.mjs brand/brand.test.mjs
+          git diff --check
+      - run: npm ci
+      - run: npm run release:check
+      - run: npm run build
+      - name: Verify desktop and mobile navigation in all languages
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/brand-qa/node_modules/playwright
+          BRAND_SITE: plugins
+          BRAND_ROUTE: /plugins
+        run: |
+          npm install --prefix "$RUNNER_TEMP/brand-qa" playwright@1.61.1
+          "$RUNNER_TEMP/brand-qa/node_modules/.bin/playwright" install --with-deps chromium
+          npm start > "$RUNNER_TEMP/site.log" 2>&1 &
+          node brand/verify-browser.mjs
+      - name: Commit tested source
+        run: |
+          git add brand
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix: replace retired chat with the shared sponsor route'
+          git rev-parse HEAD > artifacts/brand/tested-commit.txt
+          git push origin HEAD:refs/heads/fix/retire-chat-20260909
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: retirement-navigation-checks
+          path: artifacts/brand

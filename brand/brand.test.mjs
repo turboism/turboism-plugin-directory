@@ -7,7 +7,7 @@ test('approved palette, shared fonts, and identical site navigation', () => {
  for(const color of ['#6A5ACD','#EEE8AA','#FCFBF7','#30294B','#756D89','#E5E1EE'])assert.ok(css.includes(color));
  assert.doesNotMatch(css,/--color-(red|amber|green)-\d+\s*:/);
  assert.ok(css.includes('prefers-reduced-motion'));
- assert.deepEqual(nav.links.map(([key])=>key),['home','docs','sdk','plugins','learn','chat','thanks','download']);
+ assert.deepEqual(nav.links.map(([key])=>key),['home','docs','sdk','plugins','learn','thanks','download']);
  for(const locale of ['en','zh','ja'])for(const [key] of nav.links)assert.ok(nav.labels[locale][key]);
  for(const family of ['Geist','Tinos','Noto_Serif_SC','Noto_Serif_JP'])assert.ok(fonts.includes(family));
  assert.match(shell,/data-turboism-brand/);assert.match(shell,/<details/);assert.match(shell,/aria-current/);

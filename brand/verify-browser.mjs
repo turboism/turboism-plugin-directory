@@ -13,7 +13,7 @@ try{
   const page=await browser.newPage({viewport:{width,height:900},reducedMotion:'reduce'});
   await page.goto(origin+route,{waitUntil:'networkidle'});
   for(const locale of ['en','zh','ja']){
-   const header=page.locator('header.tb-header');assert.equal(await header.count(),1);
+   const header=page.locator('header.tb-header');assert.equal(await header.count(),1);assert.equal(await page.locator('a[href*="chat.turboism.dev"]').count(),0,'Retired chat link remains in the page');
    assert.equal(await header.getAttribute('data-turboism-brand'),navigation.version);
    if(width<1200)await header.locator('summary').click();
    const group=header.locator(width<1200?'.tb-menu-panel .tb-locale':'.tb-header-row > .tb-language .tb-locale');

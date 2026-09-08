@@ -1,0 +1,61 @@
+name: Verify retired chat navigation
+on:
+  push:
+    branches: [chore/retire-chat-sponsor-20260909]
+    paths: [.github/workflows/retire-navigation.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: chore/retire-chat-sponsor-20260909
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Regression first, then update shared navigation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,subprocess
+          b=Path('brand');t=b/'retirement.test.mjs'
+          t.write_text('''import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+          test('retired chat is absent and sponsorship uses www',()=>{const n=JSON.parse(readFileSync(new URL('navigation.json',import.meta.url),'utf8'));assert.deepEqual(n.links.map(([k])=>k),['home','docs','sdk','plugins','learn','sponsor','thanks','download']);assert.equal(n.links.find(([k])=>k==='sponsor')[1],'https://turboism.dev/sponsor');assert.ok(!JSON.stringify(n).includes('chat.turboism.dev'));for(const locale of ['en','zh','ja']){assert.ok(n.labels[locale].sponsor);assert.ok(!('chat' in n.labels[locale]));}});
+          ''')
+          assert subprocess.run(['node','--test',str(t)]).returncode!=0
+          p=b/'navigation.json';n=json.loads(p.read_text());n['version']='1.2.0';n['links']=[x for x in n['links'] if x[0]!='chat'];n['links'].insert(next(i for i,x in enumerate(n['links']) if x[0]=='thanks'),['sponsor','https://turboism.dev/sponsor'])
+          for locale,label in [('en','Sponsor'),('zh','赞助'),('ja','支援')]:n['labels'][locale].pop('chat',None);n['labels'][locale]['sponsor']=label
+          p.write_text(json.dumps(n,ensure_ascii=False,indent=2)+'\n')
+          p=b/'shell.tsx';p.write_text(p.read_text().replace("| 'chat'","| 'sponsor'"))
+          p=b/'brand.test.mjs';p.write_text(p.read_text().replace("'learn','chat','thanks'","'learn','sponsor','thanks'"))
+          p=b/'verify-browser.mjs';p.write_text(p.read_text().replace("waitUntil:'networkidle'","waitUntil:'domcontentloaded'"))
+          subprocess.run(['node','--test',str(t)],check=True)
+          subprocess.run(['git','diff','--check'],check=True)
+          PY
+      - run: npm ci
+      - run: npm run release:check
+      - run: npm run build
+      - name: Browser verification
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/brand-qa/node_modules/playwright
+          BRAND_SITE: plugins
+          BRAND_ROUTE: /plugins
+        run: |
+          npm install --prefix "$RUNNER_TEMP/brand-qa" playwright@1.61.1
+          "$RUNNER_TEMP/brand-qa/node_modules/.bin/playwright" install --with-deps chromium
+          npm run start > "$RUNNER_TEMP/site.log" 2>&1 &
+          node brand/verify-browser.mjs
+      - name: Push only the tested review branch
+        run: |
+          git add brand
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'style: remove retired chat and link shared www sponsor route'
+          git rev-parse HEAD > artifacts/brand/tested-commit.txt
+          git push origin HEAD:refs/heads/chore/retire-chat-sponsor-20260909
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: navigation-retirement-checks
+          path: artifacts/brand

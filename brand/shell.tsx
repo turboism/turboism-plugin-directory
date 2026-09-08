@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import navigation from './navigation.json';
 export type BrandLocale = 'en' | 'zh' | 'ja';
-export type BrandSite = 'home' | 'docs' | 'sdk' | 'plugins' | 'learn' | 'chat' | 'thanks' | 'download';
+export type BrandSite = 'home' | 'docs' | 'sdk' | 'plugins' | 'learn' | 'thanks' | 'download';
 export function BrandSocials() {
   return <div className="tb-socials">{navigation.socials.map(social => <a key={social.name} className="tb-icon" href={social.href} target="_blank" rel="noopener noreferrer" aria-label={`Turboism ${social.name}`} title={social.name}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={social.path}/></svg></a>)}</div>;
 }

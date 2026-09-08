@@ -64,7 +64,7 @@ function readLanguageCookie(): Language | null {
 }
 
 function persistLanguage(language: Language) {
-  const sharedDomain = window.location.hostname.endsWith(".turboism.dev")
+  const sharedDomain = (window.location.hostname === "turboism.dev" || window.location.hostname.endsWith(".turboism.dev"))
     ? "; Domain=.turboism.dev"
     : "";
   const secure = window.location.protocol === "https:" ? "; Secure" : "";

@@ -1,0 +1,57 @@
+name: Remove retired chat navigation
+on:
+  push:
+    branches: [fix/remove-chat-navigation]
+    paths: [.github/workflows/remove-chat-navigation.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: fix/remove-chat-navigation
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Regression first, then remove the retired entry
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFileSync as read,writeFileSync as write,existsSync as exists} from 'node:fs';
+          import {spawnSync} from 'node:child_process';
+          const dir=exists('src/brand/navigation.json')?'src/brand':'brand';
+          write(dir+'/retired-chat.test.mjs',`import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport {readFileSync} from 'node:fs';\nconst nav=JSON.parse(readFileSync(new URL('./navigation.json',import.meta.url),'utf8'));\ntest('retired chat is absent from public navigation',()=>{assert.ok(!JSON.stringify(nav).includes('chat.turboism.dev'),'retired chat link is present');assert.deepEqual(nav.links.map(([key])=>key),['home','docs','sdk','plugins','learn','thanks','download']);for(const labels of Object.values(nav.labels))assert.ok(!Object.hasOwn(labels,'chat'));});\n`);
+          const red=spawnSync('node',['--test',dir+'/retired-chat.test.mjs'],{encoding:'utf8'});process.stdout.write(red.stdout);assert.equal(red.status,1);assert.match(red.stdout,/retired chat link is present/);
+          const nav=JSON.parse(read(dir+'/navigation.json','utf8'));nav.links=nav.links.filter(([key])=>key!=='chat');for(const labels of Object.values(nav.labels))delete labels.chat;write(dir+'/navigation.json',JSON.stringify(nav)+'\n');
+          for(const [file,from,to] of [['shell.tsx'," | 'chat'",''],['brand.test.mjs',"'learn','chat','thanks'","'learn','thanks'"]])write(dir+'/'+file,read(dir+'/'+file,'utf8').replace(from,to));
+          JS
+      - run: npm ci
+      - run: npm run release:check
+      - run: npm run build
+      - name: Verify real desktop and mobile navigation
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/retirement-qa/node_modules/playwright
+          BRAND_SITE: plugins
+          BRAND_ROUTE: /plugins
+        run: |
+          if [ -d src/brand ]; then BRAND_DIR=src/brand; else BRAND_DIR=brand; fi
+          node --test "$BRAND_DIR"/*.test.mjs
+          npm install --prefix "$RUNNER_TEMP/retirement-qa" playwright@1.61.1
+          "$RUNNER_TEMP/retirement-qa/node_modules/.bin/playwright" install --with-deps chromium
+          npm start > "$RUNNER_TEMP/site.log" 2>&1 &
+          node "$BRAND_DIR/verify-browser.mjs"
+      - name: Save only verified source on the isolated branch
+        run: |
+          if [ -d src/brand ]; then git add src/brand; else git add brand; fi
+          git diff --cached --check
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix: remove retired chat from all navigation languages'
+          git rev-parse HEAD > artifacts/brand/tested-commit.txt
+          git push origin HEAD:refs/heads/fix/remove-chat-navigation
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: chat-removal-browser-checks
+          path: artifacts/brand

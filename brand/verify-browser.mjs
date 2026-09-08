@@ -11,7 +11,7 @@ const browser=await chromium.launch({headless:true});const report=[];
 try{
  for(const width of [1440,375]){
   const page=await browser.newPage({viewport:{width,height:900},reducedMotion:'reduce'});
-  await page.goto(origin+route,{waitUntil:'networkidle'});
+  await page.goto(origin+route,{waitUntil:'domcontentloaded'});
   for(const locale of ['en','zh','ja']){
    const header=page.locator('header.tb-header');assert.equal(await header.count(),1);
    assert.equal(await header.getAttribute('data-turboism-brand'),navigation.version);
@@ -36,7 +36,7 @@ try{
  }
  if(process.env.BRAND_SDK_ROUTE){
   const page=await browser.newPage({viewport:{width:375,height:900}});
-  await page.goto(origin+process.env.BRAND_SDK_ROUTE,{waitUntil:'networkidle'});
+  await page.goto(origin+process.env.BRAND_SDK_ROUTE,{waitUntil:'domcontentloaded'});
   assert.equal(await page.locator('header.tb-header').count(),1);
   await page.locator('header.tb-header summary').click();
   await page.locator('.tb-menu-panel [data-tb-lang="zh"]').click();

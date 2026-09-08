@@ -1,0 +1,3 @@
+# Turboism Violet
+
+Vendored build-time theme and accessible navigation from `turboism-www/src/brand`. No remote runtime dependency. Use #6A5ACD, #EEE8AA, #FCFBF7 and semantic tokens; preserve warning/error/success colors. The only navigation adjustment is the newly canonical apex `/thanks` path. Site adapters retain locale state and business actions. Run `node --test brand/brand.test.mjs`, existing release checks, production build, then browser workflows. Regenerate shared copies with the explicit main-site sync script when updating the canonical source. Do not restore flowers, dots or removed footer text.

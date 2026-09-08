@@ -1,0 +1,56 @@
+name: Verify retired chat navigation
+on:
+  push:
+    branches: [ops/remove-chat-navigation]
+    paths: [.github/workflows/remove-chat-navigation.yml]
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ops/remove-chat-navigation
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Reproduce and remove the retired entry
+        run: |
+          set -euo pipefail
+          git init "$RUNNER_TEMP/migration"
+          git -C "$RUNNER_TEMP/migration" fetch --depth=1 https://github.com/turboism/turboism-docs.git 178276959d7f89e138a90ce7da8c44f49c8bb2f4
+          git -C "$RUNNER_TEMP/migration" checkout --detach FETCH_HEAD
+          script="$RUNNER_TEMP/migration/scripts/retire-chat-navigation.py"
+          python3 "$script" prepare
+          if node --test brand/retired-chat.test.mjs; then echo 'Expected the old navigation regression to fail'; exit 1; fi
+          python3 "$script" apply
+          node --test brand/retired-chat.test.mjs brand/brand.test.mjs
+      - name: Release checks and build
+        run: |
+          npm ci
+          npm run release:check
+          npm run build
+      - name: Real browser checks
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/nav-qa/node_modules/playwright
+          BRAND_SITE: plugins
+          BRAND_ROUTE: /plugins
+        run: |
+          npm install --prefix "$RUNNER_TEMP/nav-qa" playwright@1.61.1
+          "$RUNNER_TEMP/nav-qa/node_modules/.bin/playwright" install --with-deps chromium
+          npm start > "$RUNNER_TEMP/site.log" 2>&1 &
+          node brand/verify-browser.mjs
+      - name: Push only the verified isolated branch
+        run: |
+          git diff --cached --check
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix: remove retired chat from plugin directory navigation'
+          git rev-parse HEAD > artifacts/brand/tested-commit.txt
+          git diff HEAD^ HEAD --stat > artifacts/brand/changes.txt
+          git push origin HEAD:refs/heads/ops/remove-chat-navigation
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: chat-navigation-removal-checks
+          path: artifacts/brand

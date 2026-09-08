@@ -1,0 +1,9 @@
+:root{--tb-display:var(--font-violet-latin),'Iowan Old Style','Palatino Linotype',Georgia,serif}
+/* The shared font variables are supplied by brand/fonts.ts in every root layout. */
+html{color-scheme:light}
+html:lang(zh){--tb-display:var(--font-violet-zh),'Songti SC',SimSun,serif}
+html:lang(ja){--tb-display:var(--font-violet-ja),'Yu Mincho',serif}
+:where(button,input,textarea,select){font-family:var(--tb-sans)}
+:where(main h1,.tb-title){font-family:var(--tb-display);font-weight:400;letter-spacing:-.035em;color:var(--tb-violet)}
+.tb-page-tools{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px;width:min(1440px,calc(100% - 64px));margin:20px auto 0;font:12px var(--tb-sans)}
+@media(max-width:700px){.tb-page-tools{width:calc(100% - 32px);justify-content:flex-start}.tb-page-tools .tb-action{font-size:11px}}

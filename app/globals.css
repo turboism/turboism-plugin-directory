@@ -1,3 +1,5 @@
 @import "tailwindcss";
 @theme inline { --color-primary: var(--tb-violet); }
 @layer base { body { margin: 0; min-height: 100vh; } }
+
+.tb-directory-main>section{padding-top:1.5rem}

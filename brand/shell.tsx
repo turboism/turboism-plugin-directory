@@ -1,17 +1,23 @@
 "use client";
-import { useEffect } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import navigation from './navigation.json';
+import { attachQQ, qqMarkup } from './qq.mjs';
 export type BrandLocale = 'en' | 'zh' | 'ja';
 export type BrandSite = 'home' | 'docs' | 'sdk' | 'plugins' | 'learn' | 'sponsor' | 'thanks' | 'download';
-export function BrandSocials() {
-  return <div className="tb-socials">{navigation.socials.map(social => <a key={social.name} className="tb-icon" href={social.href} target="_blank" rel="noopener noreferrer" aria-label={`Turboism ${social.name}`} title={social.name}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={social.path}/></svg></a>)}</div>;
+function BrandQQ({ locale }: { locale: BrandLocale }) {
+  const root = useRef<HTMLSpanElement>(null);
+  useEffect(() => { if (root.current) return attachQQ(root.current); }, [locale]);
+  return <span className="tb-qq-host" ref={root} dangerouslySetInnerHTML={{ __html: qqMarkup(locale) }}/>;
+}
+export function BrandSocials({ locale = 'en' }: { locale?: BrandLocale } = {}) {
+  return <div className="tb-socials">{navigation.socials.map(social => <Fragment key={social.name}><a className="tb-icon" href={social.href} target="_blank" rel="noopener noreferrer" aria-label={`Turboism ${social.name}`} title={social.name}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={social.path}/></svg></a>{social.name === 'Discord' && <BrandQQ locale={locale}/>}</Fragment>)}</div>;
 }
 export function BrandHeader({ active, locale = 'en', languageControl }: { active: BrandSite; locale?: BrandLocale; languageControl?: ReactNode }) {
   const text = navigation.labels[locale];
   useEffect(() => { document.documentElement.lang = locale === 'zh' ? 'zh-CN' : locale; }, [locale]);
   const nav = <nav className="tb-nav" aria-label={text.nav}>{navigation.links.map(([key, href]) => <a key={key} href={href} aria-current={key === active ? 'page' : undefined}>{text[key as BrandSite]}</a>)}</nav>;
-  return <header className="tb-header" data-turboism-brand={navigation.version}><div className="tb-header-row"><a className="tb-logo" href="https://turboism.dev/" aria-label="Turboism">Turboism.</a>{nav}{languageControl && <div className="tb-language">{languageControl}</div>}<BrandSocials/><details className="tb-menu"><summary aria-label={text.menu}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary><div className="tb-menu-panel">{nav}{languageControl && <div className="tb-language">{languageControl}</div>}</div></details></div></header>;
+  return <header className="tb-header" data-turboism-brand={navigation.version}><div className="tb-header-row"><a className="tb-logo" href="https://turboism.dev/" aria-label="Turboism">Turboism.</a>{nav}{languageControl && <div className="tb-language">{languageControl}</div>}<BrandSocials locale={locale}/><details className="tb-menu"><summary aria-label={text.menu}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary><div className="tb-menu-panel">{nav}{languageControl && <div className="tb-language">{languageControl}</div>}</div></details></div></header>;
 }
 export function BrandFooter() {
   return <footer className="tb-footer"><div><a href="https://turboism.dev/">Turboism</a> © {new Date().getFullYear()}</div></footer>;

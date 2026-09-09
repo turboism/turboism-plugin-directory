@@ -1,0 +1,45 @@
+name: Verify QQ community navigation
+on:
+  push:
+    branches: [feat/qq-community-20260910]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run release:check
+      - run: npm run build
+      - name: Check navigation and QQ fallback on desktop and mobile
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/qq-qa/node_modules/playwright
+          BRAND_SITE: plugins
+          BRAND_ROUTE: /plugins
+        run: |
+          npm install --prefix "$RUNNER_TEMP/qq-qa" playwright@1.61.1
+          "$RUNNER_TEMP/qq-qa/node_modules/.bin/playwright" install --with-deps chromium
+          npm start > "$RUNNER_TEMP/site.log" 2>&1 &
+          node brand/verify-browser.mjs
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';import{createRequire}from'node:module';
+          const{chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE);const b=await chromium.launch({headless:true});
+          try{for(const width of [1440,375,320]){
+            const p=await b.newPage({viewport:{width,height:900},reducedMotion:'reduce'});await p.addInitScript(()=>{document.addEventListener('click',e=>{if(e.target.closest?.('[data-qq-trigger],[data-qq-launch]'))e.preventDefault()},true);Object.defineProperty(navigator,'clipboard',{value:{writeText:async text=>window.qqCopied=text}})});
+            await p.goto('http://127.0.0.1:3000/plugins',{waitUntil:'domcontentloaded'});const q=p.locator('[data-qq-trigger]'),panel=p.locator('.tb-qq-panel');await q.click();await panel.waitFor();assert.equal(await panel.locator('[data-qq-number]').textContent(),'726739398');await panel.locator('[data-qq-copy]').click();assert.equal(await p.evaluate(()=>window.qqCopied),'726739398');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await p.screenshot({path:'artifacts/brand/qq-plugins-'+width+'.png'});await p.keyboard.press('Escape');assert.ok(await panel.isHidden());await p.close();
+          }}finally{await b.close()}
+          JS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: qq-navigation-checks
+          path: artifacts/brand
+          retention-days: 7

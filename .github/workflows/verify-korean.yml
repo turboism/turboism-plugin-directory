@@ -1,0 +1,44 @@
+name: Verify Korean locale
+on:
+  push:
+    branches: [feat/korean-website-20260912]
+  pull_request:
+    paths: ['brand/**', 'components/**', 'lib/**', 'app/**', 'scripts/**', '.github/workflows/verify-korean.yml']
+permissions:
+  contents: read
+concurrency:
+  group: korean-locale-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Retain exact reviewed source
+        run: |
+          mkdir -p artifacts
+          git archive HEAD > artifacts/source.tar
+          git rev-parse HEAD > artifacts/commit.txt
+      - name: Korean navigation has complete translated labels
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const nav=JSON.parse(readFileSync('brand/navigation.json','utf8'));
+          assert.ok(nav.labels.ko,'Korean navigation is missing');
+          assert.deepEqual(Object.keys(nav.labels.ko).sort(),Object.keys(nav.labels.en).sort());
+          for(const text of Object.values(nav.labels.ko))assert.ok(typeof text==='string'&&text.trim());
+          assert.match(readFileSync('brand/shell.tsx','utf8'),/한국어/);
+          JS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: korean-locale-source-and-checks
+          path: artifacts
+          retention-days: 7

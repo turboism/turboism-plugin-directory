@@ -7,10 +7,10 @@ import { useLanguage, type Language } from "@/components/language-provider";
 const labels: Record<Language, string> = {
   en: "English",
   zh: "简体中文",
-  ja: "日本語",
+  ja: "日本語", ko: "한국어",
 };
 
-const options: Language[] = ["en", "zh", "ja"];
+const options: Language[] = ['en', 'zh', 'ja', 'ko'];
 
 export function LanguageSwitcher() {
   const { language, setLanguage, copy } = useLanguage();

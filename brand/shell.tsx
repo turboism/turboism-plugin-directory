@@ -3,7 +3,7 @@ import { Fragment, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import navigation from './navigation.json';
 import { attachQQ, qqMarkup } from './qq.mjs';
-export type BrandLocale = 'en' | 'zh' | 'ja';
+export type BrandLocale = 'en' | 'zh' | 'ja' | 'ko';
 export type BrandSite = 'home' | 'docs' | 'sdk' | 'plugins' | 'learn' | 'sponsor' | 'thanks' | 'download';
 function BrandQQ({ locale }: { locale: BrandLocale }) {
   const root = useRef<HTMLSpanElement>(null);
@@ -23,5 +23,5 @@ export function BrandFooter() {
   return <footer className="tb-footer"><div><a href="https://turboism.dev/">Turboism</a> © {new Date().getFullYear()}</div></footer>;
 }
 export function BrandLanguage({ locale, onChange }: { locale: BrandLocale; onChange: (locale: BrandLocale) => void }) {
-  return <div className="tb-locale" role="group" aria-label="Language">{(['en', 'zh', 'ja'] as const).map(value => <button key={value} type="button" lang={value === 'zh' ? 'zh-CN' : value} aria-pressed={value === locale} onClick={() => onChange(value)}>{({ en: 'EN', zh: '中文', ja: '日本語' })[value]}</button>)}</div>;
+  return <div className="tb-locale" role="group" aria-label="Language">{(['en', 'zh', 'ja', 'ko'] as const).map(value => <button key={value} type="button" lang={value === 'zh' ? 'zh-CN' : value} aria-pressed={value === locale} onClick={() => onChange(value)}>{({ en: 'EN', zh: '中文', ja: '日本語', ko: '한국어' })[value]}</button>)}</div>;
 }

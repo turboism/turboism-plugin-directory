@@ -1,0 +1,55 @@
+name: Verify cross-site languages
+on:
+  pull_request:
+  push:
+    branches: [main, fix/cross-site-language-20260914]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: site-language-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Identify site and install locked dependencies
+        run: |
+          set -euo pipefail
+          site="${GITHUB_REPOSITORY#*/turboism-}"
+          case "$site" in www|docs|learn|plugin-directory|thanks) ;; *) exit 1 ;; esac
+          echo "SITE_NAME=$site" >> "$GITHUB_ENV"
+          if [ -f pnpm-lock.yaml ]; then corepack enable; corepack pnpm install --frozen-lockfile; else npm ci; fi
+      - name: Check and build the exact source revision
+        run: |
+          set -euo pipefail
+          git diff --check
+          git log -1 --format='VERIFIED_CANDIDATE %H %T'
+          if [ -f pnpm-lock.yaml ]; then corepack pnpm run release:check; corepack pnpm run build; else npm run release:check; npm run build; fi
+      - name: Install isolated browser runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/language-qa" playwright@1.61.1
+          "$RUNNER_TEMP/language-qa/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify real controls, legacy preferences and reload persistence
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/language-qa/node_modules/playwright
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/site-language
+          npm start > artifacts/site-language/server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          node scripts/verify-site-language.mjs 2>&1 | tee artifacts/site-language/check.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: site-language-${{ env.SITE_NAME }}
+          path: artifacts/site-language
+          retention-days: 7

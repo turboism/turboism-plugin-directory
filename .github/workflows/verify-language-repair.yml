@@ -1,0 +1,77 @@
+name: Verify cross-site language repair
+on:
+  push:
+    branches: [fix/cross-site-language-20260914]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: language-repair-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/fix/cross-site-language-20260914'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SITE_NAME: plugin-directory
+      KIT_REVISION: 5a017b4b78cb31a925acdbd72bcdd4b81c95a476
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: fix/cross-site-language-20260914
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Install exact dependencies and inspect routing documentation
+        run: |
+          npm ci
+          find node_modules/next/dist/docs -type f \( -name '*cookies*' -o -name '*use-search-params*' -o -name '*internationalization*' \) -print -exec head -n 100 {} \;
+      - name: Apply pinned source changes once
+        run: |
+          set -euo pipefail
+          if [ ! -f brand/language-preference.mjs ]; then
+            mkdir -p "$RUNNER_TEMP/language-kit"
+            for file in repair.mjs preference.mjs preference.test.mjs verify.mjs; do
+              curl --fail --silent --show-error --location "https://raw.githubusercontent.com/turboism/turboism-docs/$KIT_REVISION/language-kit/$file" -o "$RUNNER_TEMP/language-kit/$file"
+            done
+            node "$RUNNER_TEMP/language-kit/repair.mjs" "$SITE_NAME"
+          fi
+          node --input-type=module <<'JS'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const file='package.json',pkg=JSON.parse(readFileSync(file,'utf8')),regression='node --test tests/language-preference.test.mjs';
+          if(!pkg.scripts['release:check']?.includes(regression)){pkg.scripts['release:check']=regression+(pkg.scripts['release:check']?' && '+pkg.scripts['release:check']:'');writeFileSync(file,JSON.stringify(pkg,null,2)+'\n');}
+          JS
+      - name: Preserve candidate source without publishing
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          const paths=execFileSync('git',['ls-files','-m','-o','--exclude-standard','-z'],{encoding:'utf8'}).split('\0').filter(p=>/^(brand\/|components\/|lib\/|app\/|tests\/language-preference\.test\.mjs$|scripts\/verify-site-language\.mjs$|package\.json$)/.test(p));
+          if(paths.length)execFileSync('git',['add','--',...paths]);
+          JS
+          if ! git diff --cached --quiet; then git commit -m 'fix: add Korean directory UI and shared language preference migration'; git push origin HEAD:refs/heads/fix/cross-site-language-20260914; fi
+          git log -1 --format='VERIFIED_CANDIDATE %H %T'
+      - name: Check and build
+        run: npm run release:check && npm run build -- --webpack
+      - name: Install isolated browser runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/language-qa" playwright@1.61.1
+          "$RUNNER_TEMP/language-qa/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify locale selection and cookie migration
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/language-qa/node_modules/playwright
+        run: |
+          npm start > "$RUNNER_TEMP/site.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          node scripts/verify-site-language.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: site-language-plugin-directory
+          path: artifacts/site-language
+          retention-days: 7

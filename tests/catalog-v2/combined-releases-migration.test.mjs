@@ -6,7 +6,6 @@ import path from "node:path";
 import http from "node:http";
 import { execFileSync } from "node:child_process";
 import { once } from "node:events";
-import { createHash } from "node:crypto";
 import {
   combinedReleaseTag,
   combinedReleaseTitle,
@@ -608,7 +607,6 @@ test("pollProductionLive resolves when expected catalogVersion appears and times
 
 test("migration workflow YAML parses cleanly and validates structure", () => {
   const workflowPath = path.join(process.cwd(), ".github", "workflows", "migrate-combined-release.yml");
-  const content = readFileSync(workflowPath, "utf8");
 
   // Validate YAML parsing via python3 pyyaml
   const pyScript = `

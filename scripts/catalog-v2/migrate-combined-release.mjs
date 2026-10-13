@@ -4,18 +4,15 @@
 // verification, no-clobber idempotent sync, URL-only catalog diff assertions,
 // and production deployment polling.
 
-import { closeSync, copyFileSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   MAX_ARTIFACT_SIZE,
   MAX_CATALOG_BYTES,
   checkJarBinding,
   inspectJarFile,
-  loadTrustedKeys,
   sha256Hex,
-  stringifyCanonical,
   validateCatalogBytes,
-  verifyCatalogBytes,
 } from "../../lib/catalog-v2/catalog.mjs";
 import { redirectSafeFetch } from "./ingest-official-release.mjs";
 
@@ -24,7 +21,6 @@ const DEFAULT_ASSET_BASE = "https://github.com";
 const DEFAULT_PUBLIC_REPO = "turboism/turboism-plugin-directory";
 const GITHUB_UPLOAD_HOST = "uploads.github.com";
 const GITHUB_RELEASE_REDIRECT_HOSTS = ["release-assets.githubusercontent.com"];
-const MAX_REDIRECTS = 5;
 const PRODUCTION_CATALOG_CONTENT_TYPE = "application/vnd.turboism.plugin-catalog+json;version=2";
 
 const fail = (message) => {

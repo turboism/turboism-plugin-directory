@@ -158,6 +158,7 @@ const DEFAULT_PUBLIC_REPO = "turboism/turboism-plugin-directory";
 const GITHUB_ARTIFACT_BLOB_HOSTS = Array.from({ length: 20 }, (_, index) => `productionresultssa${index}.blob.core.windows.net`);
 const GITHUB_API_REDIRECT_HOSTS = ["pipelines.actions.githubusercontent.com", ...GITHUB_ARTIFACT_BLOB_HOSTS];
 const GITHUB_RELEASE_REDIRECT_HOSTS = ["release-assets.githubusercontent.com"];
+const GITHUB_UPLOAD_HOST = "uploads.github.com";
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -1414,12 +1415,14 @@ async function mainSyncReleases(argv) {
       if (sha256Hex(jarBytes) !== artifact.sha256 || jarBytes.byteLength !== artifact.size) {
         fail(`bundle JAR ${artifact.jarPath} no longer matches the sidecar bytes`);
       }
+      // Uploads go to the release's own upload host (uploads.github.com for the default
+      // API); the token is approved for exactly that one host, never for redirects.
       const uploaded = await apiJson(uploadUrl, {
         token,
         method: "POST",
         body: jarBytes,
         contentType: "application/java-archive",
-        approvedHosts: apiNetwork.hosts,
+        approvedHosts: new Set([new URL(uploadUrl).host]),
         allowHttp: apiNetwork.allowHttp,
       });
       if (!isPlainObject(uploaded) || uploaded.name !== artifact.asset || uploaded.size !== artifact.size) {
@@ -1477,6 +1480,10 @@ function uploadTarget(uploadUrlTemplate, owner, repository, assetName, apiUrl) {
     !parsed.pathname.endsWith("/assets")
   ) {
     fail(`release upload_url "${uploadUrlTemplate}" is not a valid https upload endpoint`);
+  }
+  const expectedHost = apiUrl === DEFAULT_API_URL ? GITHUB_UPLOAD_HOST : new URL(apiUrl).host;
+  if (parsed.host !== expectedHost || parsed.username !== "" || parsed.password !== "") {
+    fail(`release upload_url host "${parsed.host}" is not the approved upload host "${expectedHost}"`);
   }
   return `${template}?name=${encodeURIComponent(assetName)}`;
 }

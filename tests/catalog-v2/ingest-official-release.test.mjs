@@ -2065,3 +2065,10 @@ test("T3: forged release metadata is rejected before any catalog merge (source c
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("verify-run approves GitHub artifact result-storage redirects by exact host name", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("../../scripts/catalog-v2/ingest-official-release.mjs", import.meta.url), "utf8");
+  assert.match(source, /productionresultssa\$\{index\}\.blob\.core\.windows\.net/);
+  assert.match(source, /GITHUB_API_REDIRECT_HOSTS = \["pipelines\.actions\.githubusercontent\.com", \.\.\.GITHUB_ARTIFACT_BLOB_HOSTS\]/);
+});

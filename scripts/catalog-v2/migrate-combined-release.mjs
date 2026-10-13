@@ -118,6 +118,7 @@ function uploadTarget(uploadUrlTemplate, owner, repository, assetName, apiUrl) {
 
 export function downloadTarget(url, assetBase) {
   if (assetBase === DEFAULT_ASSET_BASE) return url;
+  if (url.startsWith(assetBase + "/") || url === assetBase) return url;
   if (!url.startsWith(DEFAULT_ASSET_BASE + "/")) fail(`cannot remap download URL ${url}`);
   return assetBase + url.slice(DEFAULT_ASSET_BASE.length);
 }

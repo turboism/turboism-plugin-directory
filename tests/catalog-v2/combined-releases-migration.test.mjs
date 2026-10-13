@@ -3,13 +3,24 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import http from "node:http";
+import { once } from "node:events";
+import { createHash } from "node:crypto";
 import {
   combinedReleaseTag,
   combinedReleaseTitle,
   generateCombinedReleaseBody,
   mainMigrateArtifactUrls,
 } from "../../scripts/catalog-v2/ingest-official-release.mjs";
-import { validateCatalogBytes, stringifyCanonical } from "../../lib/catalog-v2/catalog.mjs";
+import {
+  buildMigrationPlan,
+  assertUrlOnlyDiff,
+  downloadAndVerifyOldJars,
+  syncCombinedRelease,
+  pollProductionLive,
+} from "../../scripts/catalog-v2/migrate-combined-release.mjs";
+import { validateCatalogBytes, stringifyCanonical, sha256Hex } from "../../lib/catalog-v2/catalog.mjs";
+import { makeZip, makeDescriptor } from "./fixtures.mjs";
 
 function tempDir() {
   return mkdtempSync(path.join(tmpdir(), "combined-releases-test-"));
@@ -133,5 +144,463 @@ test("migrate-artifact-urls repoints matching releases to combined release and b
     assert.equal(release.artifact.size, initialCatalog.plugins[0].releases[0].artifact.size);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("buildMigrationPlan builds canonical plan and markdown body", () => {
+  const rootCatalog = JSON.parse(readFileSync(path.join(process.cwd(), "catalog", "v2", "catalog.json"), "utf8"));
+  const plan = buildMigrationPlan(rootCatalog, { version: "0.67.0", targetTag: "plugins-0.67.0" });
+  assert.equal(plan.targetTag, "plugins-0.67.0");
+  assert.equal(plan.title, "Turboism plugins · 0.67.0");
+  assert.equal(plan.releases.length, 24);
+  assert.match(plan.body, /\| Plugin ID \| Version \| SHA-256 \|/);
+  assert.match(plan.body, /`dev\.turboism\.plugin\.acp` \| `0\.67\.0` \| `e28ef9ff836309d5a1025100a70572271ea79d3dc92584704a0c3d230610f526`/);
+  assert.match(plan.body, /`dev\.turboism\.plugin\.webdav` \| `0\.67\.0` \| `d69d5ee8a08c40cb4d1841cd1b77b3834c99f11aebd17a5e35745815232ef752`/);
+
+  // Check first release structure
+  const first = plan.releases[0];
+  assert.equal(first.pluginId, "dev.turboism.plugin.acp");
+  assert.equal(first.newReleaseUrl, "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugins-0.67.0");
+  assert.equal(
+    first.newArtifactUrl,
+    "https://github.com/turboism/turboism-plugin-directory/releases/download/plugins-0.67.0/acp-0.67.0.jar",
+  );
+});
+
+test("assertUrlOnlyDiff passes on valid URL migration and rejects non-URL changes", () => {
+  const rootCatalog = JSON.parse(readFileSync(path.join(process.cwd(), "catalog", "v2", "catalog.json"), "utf8"));
+  const migrated = structuredClone(rootCatalog);
+  migrated.catalogVersion += 1;
+  for (const plugin of migrated.plugins) {
+    for (const release of plugin.releases) {
+      if (release.version === "0.67.0") {
+        release.releaseUrl = "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugins-0.67.0";
+        release.artifact.url = `https://github.com/turboism/turboism-plugin-directory/releases/download/plugins-0.67.0/${release.artifact.fileName}`;
+      }
+    }
+  }
+
+  // 1. Valid diff must pass cleanly
+  assert.doesNotThrow(() => {
+    assertUrlOnlyDiff(rootCatalog, migrated, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" });
+  });
+
+  // 2. catalogVersion not bumped by exactly 1 fails
+  const badVersion = structuredClone(migrated);
+  badVersion.catalogVersion = rootCatalog.catalogVersion;
+  assert.throws(
+    () => assertUrlOnlyDiff(rootCatalog, badVersion, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" }),
+    /catalogVersion must advance by exactly 1/,
+  );
+
+  // 3. publishedAt moving backward fails
+  const badTime = structuredClone(migrated);
+  badTime.publishedAt = "2020-01-01T00:00:00Z";
+  assert.throws(
+    () => assertUrlOnlyDiff(rootCatalog, badTime, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" }),
+    /publishedAt must not move backward/,
+  );
+
+  // 4. Tampered sha256 fails
+  const tamperedSha = structuredClone(migrated);
+  tamperedSha.plugins[0].releases[0].artifact.sha256 = "f".repeat(64);
+  assert.throws(
+    () => assertUrlOnlyDiff(rootCatalog, tamperedSha, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" }),
+    /unexpected changed fields besides releaseUrl and artifact\.url/,
+  );
+
+  // 5. Tampered size fails
+  const tamperedSize = structuredClone(migrated);
+  tamperedSize.plugins[0].releases[0].artifact.size += 10;
+  assert.throws(
+    () => assertUrlOnlyDiff(rootCatalog, tamperedSize, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" }),
+    /unexpected changed fields besides releaseUrl and artifact\.url/,
+  );
+
+  // 6. Tampered descriptorSha256 fails
+  const tamperedDesc = structuredClone(migrated);
+  tamperedDesc.plugins[0].releases[0].artifact.descriptorSha256 = "e".repeat(64);
+  assert.throws(
+    () => assertUrlOnlyDiff(rootCatalog, tamperedDesc, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" }),
+    /unexpected changed fields besides releaseUrl and artifact\.url/,
+  );
+
+  // 7. Tampered status fails
+  const tamperedStatus = structuredClone(migrated);
+  tamperedStatus.plugins[0].releases[0].status = "yanked";
+  assert.throws(
+    () => assertUrlOnlyDiff(rootCatalog, tamperedStatus, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" }),
+    /unexpected changed fields besides releaseUrl and artifact\.url/,
+  );
+
+  // 8. Plugin metadata change fails
+  const tamperedPlugin = structuredClone(migrated);
+  tamperedPlugin.plugins[0].name = "Different Name";
+  assert.throws(
+    () => assertUrlOnlyDiff(rootCatalog, tamperedPlugin, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" }),
+    /field "name" changed/,
+  );
+
+  // 9. Extra plugin or missing plugin fails
+  const missingPlugin = structuredClone(migrated);
+  missingPlugin.plugins.pop();
+  assert.throws(
+    () => assertUrlOnlyDiff(rootCatalog, missingPlugin, { targetVersion: "0.67.0", targetTag: "plugins-0.67.0" }),
+    /plugin count changed/,
+  );
+});
+
+test("downloadAndVerifyOldJars downloads, verifies integrity and bindings, and writes manifest", async () => {
+  const dir = tempDir();
+  const desc = makeDescriptor({
+    id: "dev.turboism.plugin.sample",
+    version: "0.67.0",
+    category: "workflow",
+    tags: ["sample"],
+    environment: { requiresCubism: false },
+    permissions: [],
+    dependencies: [],
+  });
+  const descBytes = Buffer.from(JSON.stringify(desc), "utf8");
+  const descSha = sha256Hex(descBytes);
+  const jarBytes = makeZip([
+    { name: "META-INF/turboism/plugin.json", data: descBytes },
+    { name: "Entry.class", data: Buffer.from([1, 2, 3]) },
+  ]);
+  const jarSha = sha256Hex(jarBytes);
+
+  let downloadCount = 0;
+  const server = http.createServer((req, res) => {
+    if (req.url.endsWith("/releases/download/plugin-sample-v0.67.0/sample-0.67.0.jar")) {
+      downloadCount += 1;
+      res.writeHead(200, { "Content-Type": "application/java-archive", "Content-Length": jarBytes.byteLength });
+      res.end(jarBytes);
+      return;
+    }
+    res.writeHead(404);
+    res.end();
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const port = server.address().port;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const catalog = {
+      format: "turboism.plugin.catalog",
+      schemaVersion: 2,
+      catalogVersion: 2,
+      publishedAt: "2026-10-13T09:17:27Z",
+      plugins: [
+        {
+          id: "dev.turboism.plugin.sample",
+          slug: "sample",
+          name: "Sample Plugin",
+          summary: "Sample summary.",
+          trust: "official",
+          author: "Turboism Contributors",
+          license: "Project License",
+          repository: "https://github.com/turboism/turboism-plugin-directory",
+          support: "https://github.com/turboism/turboism-plugin-directory/issues",
+          localizations: {},
+          releases: [
+            {
+              version: "0.67.0",
+              channel: "preview",
+              status: "active",
+              publishedAt: "2026-10-13T09:17:27Z",
+              category: "workflow",
+              tags: ["sample"],
+              turboismApi: "[0.1.0,0.2.0)",
+              requiresCubism: false,
+              cubismVersions: [],
+              platforms: ["windows-x64"],
+              dependencies: [],
+              permissions: [],
+              releaseUrl: "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugin-sample-v0.67.0",
+              sourceRevision: "d02abb3d96c3070da2da2013b3605a0a375c8954",
+              artifact: {
+                mediaType: "application/java-archive",
+                fileName: "sample-0.67.0.jar",
+                url: "https://github.com/turboism/turboism-plugin-directory/releases/download/plugin-sample-v0.67.0/sample-0.67.0.jar",
+                sha256: jarSha,
+                descriptorSha256: descSha,
+                size: jarBytes.byteLength,
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const catalogPath = path.join(dir, "catalog.json");
+    writeFileSync(catalogPath, JSON.stringify(catalog));
+    const jarsDir = path.join(dir, "jars");
+    const manifestOut = path.join(dir, "jars.json");
+
+    const result = await downloadAndVerifyOldJars({
+      catalogPath,
+      version: "0.67.0",
+      targetTag: "plugins-0.67.0",
+      dir: jarsDir,
+      manifestOut,
+      assetBase: baseUrl,
+    });
+
+    assert.equal(result.verifiedCount, 1);
+    assert.equal(downloadCount, 1);
+    const manifest = JSON.parse(readFileSync(manifestOut, "utf8"));
+    assert.ok(manifest["dev.turboism.plugin.sample@0.67.0"]);
+    assert.deepEqual(readFileSync(manifest["dev.turboism.plugin.sample@0.67.0"]), jarBytes);
+  } finally {
+    server.close();
+    await once(server, "close");
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("syncCombinedRelease creates release, uploads asset, re-downloads anonymously, and resumes idempotently", async () => {
+  const dir = tempDir();
+  const desc = makeDescriptor({
+    id: "dev.turboism.plugin.sample",
+    version: "0.67.0",
+    category: "workflow",
+    tags: ["sample"],
+    environment: { requiresCubism: false },
+    permissions: [],
+    dependencies: [],
+  });
+  const descBytes = Buffer.from(JSON.stringify(desc), "utf8");
+  const descSha = sha256Hex(descBytes);
+  const jarBytes = makeZip([
+    { name: "META-INF/turboism/plugin.json", data: descBytes },
+    { name: "Entry.class", data: Buffer.from([1, 2, 3]) },
+  ]);
+  const jarSha = sha256Hex(jarBytes);
+
+  let releaseCreated = false;
+  let assetUploaded = false;
+  let anonymousDownloadCount = 0;
+  let releaseData = null;
+
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url, "http://127.0.0.1");
+
+    // 1. Release inspection (GET)
+    if (req.method === "GET" && url.pathname === "/repos/turboism/turboism-plugin-directory/releases/tags/plugins-0.67.0") {
+      if (!releaseData) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ message: "Not Found" }));
+      } else {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(releaseData));
+      }
+      return;
+    }
+
+    // 2. Release creation (POST)
+    if (req.method === "POST" && url.pathname === "/repos/turboism/turboism-plugin-directory/releases") {
+      releaseCreated = true;
+      releaseData = {
+        id: 999,
+        tag_name: "plugins-0.67.0",
+        name: "Turboism plugins · 0.67.0",
+        draft: false,
+        prerelease: false,
+        html_url: "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugins-0.67.0",
+        upload_url: `http://127.0.0.1:${server.address().port}/repos/turboism/turboism-plugin-directory/releases/999/assets{?name,label}`,
+        assets: [],
+      };
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(releaseData));
+      return;
+    }
+
+    // 3. Asset upload (POST)
+    if (req.method === "POST" && url.pathname.startsWith("/repos/turboism/turboism-plugin-directory/releases/999/assets")) {
+      assetUploaded = true;
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const uploadedBytes = Buffer.concat(chunks);
+      assert.deepEqual(uploadedBytes, jarBytes);
+
+      const assetObj = {
+        id: 1001,
+        name: "sample-0.67.0.jar",
+        size: uploadedBytes.byteLength,
+        browser_download_url: `http://127.0.0.1:${server.address().port}/download/plugins-0.67.0/sample-0.67.0.jar`,
+      };
+      releaseData.assets.push(assetObj);
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(assetObj));
+      return;
+    }
+
+    // 4. Anonymous asset download (GET)
+    if (req.method === "GET" && url.pathname === "/download/plugins-0.67.0/sample-0.67.0.jar") {
+      assert.equal(req.headers.authorization, undefined, "anonymous download must have no Authorization header");
+      anonymousDownloadCount += 1;
+      res.writeHead(200, { "Content-Type": "application/java-archive", "Content-Length": jarBytes.byteLength });
+      res.end(jarBytes);
+      return;
+    }
+
+    res.writeHead(404);
+    res.end();
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const port = server.address().port;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const catalog = {
+      format: "turboism.plugin.catalog",
+      schemaVersion: 2,
+      catalogVersion: 2,
+      publishedAt: "2026-10-13T09:17:27Z",
+      plugins: [
+        {
+          id: "dev.turboism.plugin.sample",
+          slug: "sample",
+          name: "Sample Plugin",
+          summary: "Sample summary.",
+          trust: "official",
+          author: "Turboism Contributors",
+          license: "Project License",
+          repository: "https://github.com/turboism/turboism-plugin-directory",
+          support: "https://github.com/turboism/turboism-plugin-directory/issues",
+          localizations: {},
+          releases: [
+            {
+              version: "0.67.0",
+              channel: "preview",
+              status: "active",
+              publishedAt: "2026-10-13T09:17:27Z",
+              category: "workflow",
+              tags: ["sample"],
+              turboismApi: "[0.1.0,0.2.0)",
+              requiresCubism: false,
+              cubismVersions: [],
+              platforms: ["windows-x64"],
+              dependencies: [],
+              permissions: [],
+              releaseUrl: "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugin-sample-v0.67.0",
+              sourceRevision: "d02abb3d96c3070da2da2013b3605a0a375c8954",
+              artifact: {
+                mediaType: "application/java-archive",
+                fileName: "sample-0.67.0.jar",
+                url: "https://github.com/turboism/turboism-plugin-directory/releases/download/plugin-sample-v0.67.0/sample-0.67.0.jar",
+                sha256: jarSha,
+                descriptorSha256: descSha,
+                size: jarBytes.byteLength,
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const catalogPath = path.join(dir, "catalog.json");
+    writeFileSync(catalogPath, JSON.stringify(catalog));
+    const jarFilePath = path.join(dir, "sample-0.67.0.jar");
+    writeFileSync(jarFilePath, jarBytes);
+    const jarsManifestPath = path.join(dir, "jars.json");
+    writeFileSync(jarsManifestPath, JSON.stringify({ "dev.turboism.plugin.sample@0.67.0": jarFilePath }));
+
+    // 1. Dry run should make zero network calls
+    const dryRunResult = await syncCombinedRelease({
+      catalogPath,
+      version: "0.67.0",
+      targetTag: "plugins-0.67.0",
+      jarsManifestPath,
+      dryRun: true,
+    });
+    assert.equal(dryRunResult.dryRun, true);
+    assert.equal(releaseCreated, false);
+    assert.equal(assetUploaded, false);
+
+    // 2. Real run: creates release, uploads asset, downloads anonymously
+    const liveResult = await syncCombinedRelease({
+      catalogPath,
+      version: "0.67.0",
+      targetTag: "plugins-0.67.0",
+      jarsManifestPath,
+      apiUrl: baseUrl,
+      assetBase: baseUrl,
+      token: "test-token",
+      dryRun: false,
+    });
+    assert.equal(liveResult.ok, true);
+    assert.equal(releaseCreated, true);
+    assert.equal(assetUploaded, true);
+    assert.equal(anonymousDownloadCount, 1);
+
+    // 3. Resumed run: release and asset exist, no re-upload
+    assetUploaded = false;
+    const resumeResult = await syncCombinedRelease({
+      catalogPath,
+      version: "0.67.0",
+      targetTag: "plugins-0.67.0",
+      jarsManifestPath,
+      apiUrl: baseUrl,
+      assetBase: baseUrl,
+      token: "test-token",
+      dryRun: false,
+    });
+    assert.equal(resumeResult.ok, true);
+    assert.equal(assetUploaded, false, "existing asset must not be re-uploaded");
+    assert.equal(anonymousDownloadCount, 2, "existing asset must be verified anonymously");
+  } finally {
+    server.close();
+    await once(server, "close");
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("pollProductionLive resolves when expected catalogVersion appears and times out if not", async () => {
+  let callCount = 0;
+  const server = http.createServer((req, res) => {
+    if (req.url === "/api/v2/catalog.json") {
+      callCount += 1;
+      const version = callCount >= 2 ? 3 : 2;
+      res.writeHead(200, { "Content-Type": "application/vnd.turboism.plugin-catalog+json;version=2" });
+      res.end(JSON.stringify({ format: "turboism.plugin.catalog", schemaVersion: 2, catalogVersion: version }));
+      return;
+    }
+    res.writeHead(404);
+    res.end();
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const port = server.address().port;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const success = await pollProductionLive({
+      baseUrl,
+      expectedVersion: 3,
+      timeoutSeconds: 5,
+      intervalSeconds: 0.1,
+    });
+    assert.equal(success, true);
+    assert.ok(callCount >= 2);
+
+    // Timeout case
+    await assert.rejects(
+      pollProductionLive({
+        baseUrl,
+        expectedVersion: 99,
+        timeoutSeconds: 0.3,
+        intervalSeconds: 0.1,
+      }),
+      /timeout waiting for catalogVersion 99/,
+    );
+  } finally {
+    server.close();
+    await once(server, "close");
   }
 });

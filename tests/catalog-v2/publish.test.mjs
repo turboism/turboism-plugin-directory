@@ -574,11 +574,12 @@ test("publisher workflow static assertions: automated lane inputs, all-or-none g
     });
   const step = (name) => stepBlocks.find((s) => s.name === name);
 
-  // Protected source-lane dispatch contract: exactly the three optional
-  // strings emitted by Turboism core, with no Provider-only additions.
+  // Protected source-lane dispatch contract: the three optional strings
+  // emitted by Turboism core plus optional request_id for run-name correlation.
+  assert.match(workflow, /^run-name:\s*Publish Plugin Directory v2 catalog · request \$\{\{ inputs\.request_id \|\| github\.run_id \}\}$/m);
   const inputsBlock = workflow.match(/^on:\n((?:[ \t]+\S[^\n]*\n?)*)/m)[1];
   const dispatchInputs = [...inputsBlock.matchAll(/^      ([a-z0-9_]+):$/gm)].map((match) => match[1]);
-  assert.deepEqual(dispatchInputs, ["source_run_id", "source_sha", "artifact_name"]);
+  assert.deepEqual(dispatchInputs, ["source_run_id", "source_sha", "artifact_name", "request_id"]);
   for (const input of dispatchInputs) {
     assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+(?:description|required|type|default):[^\n]*\\n)+`));
     assert.match(inputsBlock, new RegExp(`${input}:\\n(?:[ \t]+[^\n]*\\n)*[ \t]+type: string`));
@@ -592,6 +593,7 @@ test("publisher workflow static assertions: automated lane inputs, all-or-none g
   assert.match(workflow, /this exact workflow filename\/ref and input set/);
   assert.match(workflow, /source_run_id, source_sha, and/);
   assert.match(workflow, /artifact_name/);
+  assert.match(workflow, /request_id/);
   const gate = step("Validate dispatch inputs are all-or-none");
   assert.ok(gate, "all-or-none gate step must exist");
   // R1: inputs are evaluated in YAML env: values only; run: blocks reference
@@ -599,6 +601,7 @@ test("publisher workflow static assertions: automated lane inputs, all-or-none g
   assert.match(gate.body, /SOURCE_RUN_ID: \$\{\{ inputs\.source_run_id \}\}/);
   assert.match(gate.body, /SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/);
   assert.match(gate.body, /ARTIFACT_NAME: \$\{\{ inputs\.artifact_name \}\}/);
+  assert.match(gate.body, /REQUEST_ID: \$\{\{ inputs\.request_id \}\}/);
   assert.match(gate.body, /for value in "\$SOURCE_RUN_ID" "\$SOURCE_SHA" "\$ARTIFACT_NAME"/);
   assert.match(gate.body, /present=0/);
   assert.match(gate.body, /-ne 0/);
@@ -693,9 +696,11 @@ test("publisher workflow static assertions: automated lane inputs, all-or-none g
   // an idempotent run commits nothing; the push is never forced.
   const commit = step("Commit the generated pair and push to main");
   assert.ok(commit);
+  assert.match(commit.body, /VERCEL_DEPLOY_HOOK_URL: \$\{\{ secrets\.VERCEL_DEPLOY_HOOK_URL \}\}/);
   assert.match(commit.body, /if git diff --quiet && \[ -z "\$\(git status --porcelain --untracked-files=all\)" \]/);
   assert.match(commit.body, /nothing to commit/);
   assert.match(commit.body, /git add public\/api\/v2 catalog\/v2\/catalog\.json/);
   assert.match(commit.body, /git push origin HEAD:refs\/heads\/main/);
+  assert.match(commit.body, /https:\/\/api\.vercel\.com\/v1\/integrations\/deploy\//);
   assert.doesNotMatch(commit.body, /--force|\s-f\s/);
 });

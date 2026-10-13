@@ -32,9 +32,13 @@
 #   never echoed, persisted, uploaded, or exposed to later steps.
 # - contents: write is the ONLY permission; one non-cancelling concurrency
 #   group; the job has a bounded timeout-minutes.
-# - The workflow_dispatch source-lane contract is exactly the three optional
-#   string inputs emitted by Turboism core: source_run_id, source_sha, and
-#   artifact_name. They are all-or-none; no additional dispatch inputs exist.
+# - The workflow_dispatch source-lane contract accepts the optional string
+#   inputs emitted by Turboism core: source_run_id, source_sha, and
+#   artifact_name (all-or-none), plus optional request_id for run-name
+#   correlation.
+# - Optional secret VERCEL_DEPLOY_HOOK_URL (in the catalog-signing environment
+#   or repository secrets) triggers a Vercel production deployment immediately
+#   after the bot push to main when the Vercel GitHub App ignores bot pushes.
 # - Workflow inputs are never trusted and never interpolated into shell:
 #   every input is passed through YAML env: values and referenced as a quoted
 #   shell variable inside run: blocks. The GitHub API is the authority for
@@ -55,6 +59,7 @@
 #   generated pair is committed as github-actions[bot] and pushed to main
 #   without force.
 name: Publish Plugin Directory v2 catalog
+run-name: Publish Plugin Directory v2 catalog · request ${{ inputs.request_id || github.run_id }}
 
 on:
   workflow_dispatch:
@@ -71,6 +76,11 @@ on:
         default: ""
       artifact_name:
         description: "Turboism source artifact name"
+        required: false
+        type: string
+        default: ""
+      request_id:
+        description: "Optional correlation request id"
         required: false
         type: string
         default: ""
@@ -114,6 +124,7 @@ jobs:
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           SOURCE_SHA: ${{ inputs.source_sha }}
           ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          REQUEST_ID: ${{ inputs.request_id }}
         run: |
           set -euo pipefail
           present=0
@@ -122,6 +133,10 @@ jobs:
           done
           if [ "$present" -ne 0 ] && [ "$present" -ne 3 ]; then
             echo "automated dispatch requires source_run_id, source_sha, and artifact_name together (or none for manual mode)"
+            exit 1
+          fi
+          if [ -n "$REQUEST_ID" ] && ! printf '%s' "$REQUEST_ID" | grep -Eq '^[A-Za-z0-9._-]{1,128}$'; then
+            echo "request_id must match ^[A-Za-z0-9._-]{1,128}$ when provided"
             exit 1
           fi
           echo "dispatch inputs valid (automated=$([ "$present" -eq 3 ] && echo yes || echo no))"
@@ -258,6 +273,8 @@ jobs:
           echo "private-key marker scan clean"
 
       - name: Commit the generated pair and push to main
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
           set -euo pipefail
           if git diff --quiet && [ -z "$(git status --porcelain --untracked-files=all)" ]; then
@@ -269,3 +286,17 @@ jobs:
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
               commit -m 'chore(catalog-v2): publish signed catalog generation'
           git push origin HEAD:refs/heads/main
+          if [ -n "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            case "$VERCEL_DEPLOY_HOOK_URL" in
+              https://api.vercel.com/v1/integrations/deploy/*)
+                curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL" >/dev/null
+                echo "triggered Vercel production deploy hook"
+                ;;
+              *)
+                echo "VERCEL_DEPLOY_HOOK_URL must start with https://api.vercel.com/v1/integrations/deploy/"
+                exit 1
+                ;;
+            esac
+          else
+            echo "VERCEL_DEPLOY_HOOK_URL is not set; relying on Vercel GitHub App push deployment"
+          fi

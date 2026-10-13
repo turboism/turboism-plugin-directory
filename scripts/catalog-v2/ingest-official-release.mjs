@@ -535,6 +535,39 @@ async function readResponseBounded(response, cap, url) {
 }
 
 /** Download exact bytes with a hard stream cap (strict bound before/while reading). */
+async function resolveAuthenticatedRedirect(url, token, apiNetwork, artifactNetwork) {
+  const target = checkedRequestUrl(url, apiNetwork.hosts, { allowHttp: apiNetwork.allowHttp });
+  const headers = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  if (token !== null) headers.Authorization = `Bearer ${token}`;
+  let response;
+  try {
+    response = await fetch(target, { method: "GET", headers, redirect: "manual" });
+  } catch (error) {
+    fail(`request to ${target.href} failed: ${error.message}`);
+  }
+  if (!REDIRECT_STATUSES.has(response.status)) {
+    await response.body?.cancel().catch(() => {});
+    if (!response.ok) fail(`download failed: ${response.status} ${response.statusText} for ${url}`);
+    return null;
+  }
+  const location = response.headers.get("location");
+  await response.body?.cancel().catch(() => {});
+  if (location === null) fail(`redirect from ${target.href} is missing Location`);
+  let next;
+  try {
+    next = new URL(location, target);
+  } catch {
+    fail(`redirect from ${target.href} has an invalid Location`);
+  }
+  // Same-host redirects stay on the authenticated API path (with its hop cap).
+  if (next.host === target.host) return null;
+  checkedRequestUrl(next.href, artifactNetwork.hosts, { allowHttp: artifactNetwork.allowHttp, what: "redirect target" });
+  if (target.protocol === "https:" && next.protocol !== "https:") {
+    fail(`redirect from ${target.href} downgrades HTTPS to ${next.protocol}`);
+  }
+  return next.href;
+}
+
 async function fetchBounded(url, cap, { token = null, approvedHosts = null, allowHttp = false, requestHeaders = {} } = {}) {
   const response = await apiFetch(url, { token, approvedHosts, allowHttp, requestHeaders });
   if (!response.ok) {
@@ -761,11 +794,21 @@ async function mainVerifyRun(argv) {
       : `${apiUrl}/repos/${DEFAULT_SOURCE_REPO}/actions/artifacts/${artifact.id}/zip`;
   const downloadOrigin = new URL(downloadUrl).host;
   const apiOrigin = new URL(apiUrl).host;
-  const zipBytes = await fetchBounded(downloadUrl, MAX_BUNDLE_ZIP_BYTES, {
-    token: downloadOrigin === apiOrigin ? token : null,
-    approvedHosts: downloadOrigin === apiOrigin ? apiNetwork.hosts : artifactNetwork.hosts,
-    allowHttp: artifactNetwork.allowHttp,
-  });
+  let zipBytes;
+  if (downloadOrigin === apiOrigin) {
+    // The authenticated API answers with a short-lived signed redirect to result storage.
+    // Resolve it without following, so the bearer token never leaves the API host, then
+    // download the signed URL anonymously from an approved storage host.
+    const location = await resolveAuthenticatedRedirect(downloadUrl, token, apiNetwork, artifactNetwork);
+    zipBytes = location === null
+      ? await fetchBounded(downloadUrl, MAX_BUNDLE_ZIP_BYTES, { token, approvedHosts: apiNetwork.hosts, allowHttp: apiNetwork.allowHttp })
+      : await fetchBounded(location, MAX_BUNDLE_ZIP_BYTES, { approvedHosts: artifactNetwork.hosts, allowHttp: artifactNetwork.allowHttp });
+  } else {
+    zipBytes = await fetchBounded(downloadUrl, MAX_BUNDLE_ZIP_BYTES, {
+      approvedHosts: artifactNetwork.hosts,
+      allowHttp: artifactNetwork.allowHttp,
+    });
+  }
   extractArtifactZip(zipBytes, outDir);
   console.log(`verified source run ${runId} (${sha}) and extracted artifact "${artifactName}" -> ${outDir}`);
 }

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PluginDetailView } from "@/components/directory-browser";
-import { getDirectoryPluginBySlug, getDirectoryPlugins } from "@/lib/directory";
+import { getDirectoryPluginBySlug, getDirectoryPlugins, getPluginReadmes } from "@/lib/directory";
 
 export function generateStaticParams() {
   return getDirectoryPlugins().map((plugin) => ({ slug: plugin.slug }));
@@ -24,5 +24,7 @@ export default async function PluginDetailPage({ params }: { params: Promise<{ s
   const plugin = getDirectoryPluginBySlug(slug);
   if (!plugin) notFound();
 
-  return <PluginDetailView plugin={plugin} />;
+  const readmes = getPluginReadmes(plugin.id, plugin.latestVersion);
+
+  return <PluginDetailView plugin={plugin} readmes={readmes} />;
 }

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { defaultProductionDir } from "./catalog-v2/catalog.mjs";
 import { CATALOG_CACHE_CONTROL, loadVerifiedCurrentGeneration } from "./catalog-v2/http.mjs";
+import { loadPluginReadmes as loadPluginReadmesFromStorage } from "./catalog-v2/readme.mjs";
 import {
   CATALOG_LOCALES,
   collectAvailableCategories,
@@ -79,6 +80,15 @@ export function getDirectoryPluginBySlug(
   storage?: DirectoryStorageOptions,
 ): PluginEntry | undefined {
   return getDirectoryPlugins(storage).find((entry) => entry.slug === slug);
+}
+
+export function getPluginReadmes(
+  pluginId: string,
+  version: string,
+  storage?: DirectoryStorageOptions,
+): Record<string, string> {
+  const { dir } = resolveStoragePaths(storage);
+  return loadPluginReadmesFromStorage(pluginId, version, { dir });
 }
 
 export function serveLegacyPlugins(storage?: DirectoryStorageOptions): Response {

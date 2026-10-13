@@ -107,6 +107,7 @@ import {
   verifyCatalogBytes,
   loadTrustedKeys,
 } from "../../lib/catalog-v2/catalog.mjs";
+import { writeGenerationReadmes } from "../../lib/catalog-v2/readme.mjs";
 
 // ---------------------------------------------------------------------------
 // Contract constants (kept in sync with the frozen lib/catalog-v2/catalog.mjs
@@ -820,7 +821,8 @@ async function mainVerifyRun(argv) {
 
 const POLICY_KEYS = ["channel", "cubismVersions", "repository", "support"];
 const DESCRIPTOR_KEYS = ["id", "version", "name", "description", "author", "license", "category", "tags", "turboismApi", "environment", "dependencies", "permissions"];
-const OPTIONAL_DESCRIPTOR_KEYS = ["publishedEvents", "subscribedEvents", "embeddedContracts"];
+const ARRAY_DESCRIPTOR_KEYS = ["publishedEvents", "subscribedEvents", "embeddedContracts"];
+const OPTIONAL_DESCRIPTOR_KEYS = [...ARRAY_DESCRIPTOR_KEYS, "lifecycle"];
 const ALLOWED_DESCRIPTOR_KEYS = [...DESCRIPTOR_KEYS, ...OPTIONAL_DESCRIPTOR_KEYS];
 const ENVIRONMENT_KEYS = ["requiresCubism", "ui"];
 const LOCALIZATION_KEYS = ["name", "description"];
@@ -924,10 +926,20 @@ function validateDescriptorSubset(descriptor, path, issues) {
   }
   checkKeysOnly(descriptor, ALLOWED_DESCRIPTOR_KEYS, path, issues);
   checkRequiredFields(descriptor, DESCRIPTOR_KEYS, path, issues);
-  for (const eventKey of OPTIONAL_DESCRIPTOR_KEYS) {
+  for (const eventKey of ARRAY_DESCRIPTOR_KEYS) {
     if (descriptor[eventKey] !== undefined) {
       if (!Array.isArray(descriptor[eventKey]) || !descriptor[eventKey].every(isPlainObject)) {
         issues.push({ path: `${path}.${eventKey}`, message: "must be an array of objects" });
+      }
+    }
+  }
+  if (descriptor.lifecycle !== undefined) {
+    if (!isPlainObject(descriptor.lifecycle)) {
+      issues.push({ path: `${path}.lifecycle`, message: "must be an object" });
+    } else {
+      checkKeysOnly(descriptor.lifecycle, ["hotReload"], `${path}.lifecycle`, issues);
+      if (descriptor.lifecycle.hotReload !== undefined && typeof descriptor.lifecycle.hotReload !== "boolean") {
+        issues.push({ path: `${path}.lifecycle.hotReload`, message: "must be a boolean" });
       }
     }
   }
@@ -1322,10 +1334,6 @@ export function generateCombinedReleaseBody(bundle) {
     lines.push(`| \`${pluginId}\` | \`${version}\` | \`${artifact.sha256}\` |`);
   }
   return lines.join("\n");
-}
-
-function releaseTag(module, version) {
-  return `plugin-${module}-v${version}`;
 }
 
 async function mainSyncReleases(argv) {
@@ -1972,6 +1980,7 @@ function buildReleaseEntry(artifact, meta, revision) {
       descriptorSha256: artifact.descriptorSha256,
       size: artifact.size,
     },
+    ...(descriptor.lifecycle?.hotReload !== undefined ? { hotReload: descriptor.lifecycle.hotReload } : {}),
   };
 }
 
@@ -2072,7 +2081,7 @@ async function mainIngest(argv) {
 // ---------------------------------------------------------------------------
 
 async function mainHydrate(argv) {
-  const flags = parseFlags(argv, { strings: ["catalog", "bundle", "dir", "manifest-out", "asset-base"] });
+  const flags = parseFlags(argv, { strings: ["catalog", "bundle", "dir", "manifest-out", "asset-base", "readmes-dir"] });
   const catalogPath = requireFlag(flags, "catalog");
   const bundlePath = flags["bundle"] ?? null;
   const dir = requireFlag(flags, "dir");
@@ -2148,6 +2157,9 @@ async function mainHydrate(argv) {
       }
       manifest[key] = resolved;
     }
+  }
+  if (flags["readmes-dir"]) {
+    writeGenerationReadmes(flags["readmes-dir"], manifest);
   }
   writeFileAtomic(manifestOut, Buffer.from(JSON.stringify(manifest), "utf8"));
   console.log(`hydration complete: ${Object.keys(manifest).length} release binding(s) -> ${manifestOut}`);

@@ -729,6 +729,10 @@
               "$ref": "#/components/schemas/PluginPermission"
             }
           },
+          "hotReload": {
+            "type": "boolean",
+            "description": "Whether the plugin supports hot install/update without restarting Cubism."
+          },
           "releaseUrl": {
             "type": "string",
             "format": "uri",

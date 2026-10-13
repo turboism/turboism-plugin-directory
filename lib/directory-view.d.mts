@@ -46,6 +46,7 @@ export interface PluginReleaseEntry {
   sha256: string;
   descriptorSha256: string;
   size: number;
+  hotReload?: boolean;
 }
 
 export interface PluginEntry {
@@ -76,6 +77,7 @@ export interface PluginEntry {
   sha256: string;
   descriptorSha256: string;
   size: number;
+  hotReload: boolean;
   sourceRevision?: string;
   releases: PluginReleaseEntry[];
   verifiedRelease: string;
@@ -126,4 +128,6 @@ export function filterPlugins(
   selectedTag?: string | null,
   selectedCategory?: string | null,
   locale?: string,
+  selectedAuthor?: string | null,
+  selectedLicense?: string | null,
 ): PluginEntry[];

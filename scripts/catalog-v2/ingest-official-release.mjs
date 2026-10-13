@@ -1192,6 +1192,7 @@ async function mainValidateBundle(argv) {
           id: permission.id,
           scope: permission.scope ?? "application",
         })),
+        ...(artifact.descriptor.lifecycle?.hotReload !== undefined ? { hotReload: artifact.descriptor.lifecycle.hotReload } : {}),
       },
       artifact.descriptor.id,
       inspected.descriptor,
@@ -1970,6 +1971,7 @@ function buildReleaseEntry(artifact, meta, revision) {
       scope: permission.scope ?? "application",
       reason: permission.reason,
     })),
+    ...(descriptor.lifecycle?.hotReload !== undefined ? { hotReload: descriptor.lifecycle.hotReload } : {}),
     releaseUrl: meta.releaseUrl,
     sourceRevision: revision,
     artifact: {
@@ -1980,7 +1982,6 @@ function buildReleaseEntry(artifact, meta, revision) {
       descriptorSha256: artifact.descriptorSha256,
       size: artifact.size,
     },
-    ...(descriptor.lifecycle?.hotReload !== undefined ? { hotReload: descriptor.lifecycle.hotReload } : {}),
   };
 }
 

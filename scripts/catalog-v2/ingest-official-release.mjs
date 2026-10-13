@@ -1043,9 +1043,15 @@ async function mainValidateBundle(argv) {
     if (!isPlainObject(sidecar.source)) {
       issues.push({ path: "sidecar.source", message: "must be an object" });
     } else {
-      checkKeysOnly(sidecar.source, ["revision"], "sidecar.source", issues);
+      checkKeysOnly(sidecar.source, ["revision", "version", "frameworkVersion"], "sidecar.source", issues);
       checkRequiredFields(sidecar.source, ["revision"], "sidecar.source", issues);
       checkString(sidecar.source, "revision", "sidecar.source", issues, { min: 40, max: 40, re: RE_SOURCE_REVISION });
+      if (sidecar.source.version !== undefined) {
+        checkString(sidecar.source, "version", "sidecar.source", issues, { min: 1, max: 64 });
+      }
+      if (sidecar.source.frameworkVersion !== undefined) {
+        checkString(sidecar.source, "frameworkVersion", "sidecar.source", issues, { min: 1, max: 64 });
+      }
     }
   }
   if (sidecar.artifacts !== undefined) {
@@ -1064,7 +1070,16 @@ async function mainValidateBundle(argv) {
     fail(`bundle sidecar revision ${sidecar.source.revision} does not equal the verified source SHA ${expectedRevision}`);
   }
 
-  const normalized = { format: MARKET_FORMAT, schemaVersion: MARKET_SCHEMA, source: { revision: sidecar.source.revision }, artifacts: [] };
+  const sourceVersion = flags["source-version"] ?? sidecar.source?.version ?? sidecar.source?.frameworkVersion;
+  const normalized = {
+    format: MARKET_FORMAT,
+    schemaVersion: MARKET_SCHEMA,
+    source: {
+      revision: sidecar.source.revision,
+      ...(typeof sourceVersion === "string" && sourceVersion.length > 0 ? { version: sourceVersion } : {}),
+    },
+    artifacts: [],
+  };
   const seenModules = new Set();
   const seenIds = new Set();
   const seenVersions = new Map(); // module -> Set(version)
@@ -1227,14 +1242,18 @@ async function mainValidateBundle(argv) {
  * match exactly, the Provider release URL to be exact, published_at to be a
  * valid UTC date-time, and the upload/assets shape to be present as needed.
  */
-function validateReleaseResponse(release, owner, repository, tag, { requireUploadUrl = false, requireAssets = false } = {}) {
+function validateReleaseResponse(release, owner, repository, tag, { expectedName = null, requireUploadUrl = false, requireAssets = false } = {}) {
   const issues = [];
   const prefix = "release";
   if (release.tag_name !== tag) {
     issues.push({ path: `${prefix}.tag_name`, message: `tag metadata conflict: expected "${tag}", got "${JSON.stringify(release.tag_name)}"` });
   }
-  if (release.name !== tag) {
-    issues.push({ path: `${prefix}.name`, message: `name metadata conflict: expected "${tag}", got ${JSON.stringify(release.name)}` });
+  if (expectedName !== null) {
+    if (release.name !== expectedName && release.name !== tag) {
+      issues.push({ path: `${prefix}.name`, message: `name metadata conflict: expected "${expectedName}" or "${tag}", got ${JSON.stringify(release.name)}` });
+    }
+  } else if (typeof release.name !== "string" || release.name.length === 0) {
+    issues.push({ path: `${prefix}.name`, message: "must be a non-empty string" });
   }
   if (release.draft !== false) {
     issues.push({ path: `${prefix}.draft`, message: `must be exactly false, got ${JSON.stringify(release.draft)}; refusing to mutate or reuse it` });
@@ -1257,13 +1276,61 @@ function validateReleaseResponse(release, owner, repository, tag, { requireUploa
   return release;
 }
 
+function resolveSourceVersion(bundle, flags = {}) {
+  if (typeof flags["source-version"] === "string" && flags["source-version"].length > 0) {
+    return flags["source-version"];
+  }
+  if (typeof bundle.source?.version === "string" && bundle.source.version.length > 0) {
+    return bundle.source.version;
+  }
+  if (typeof bundle.source?.frameworkVersion === "string" && bundle.source.frameworkVersion.length > 0) {
+    return bundle.source.frameworkVersion;
+  }
+  if (typeof bundle.frameworkVersion === "string" && bundle.frameworkVersion.length > 0) {
+    return bundle.frameworkVersion;
+  }
+  if (typeof bundle.version === "string" && bundle.version.length > 0) {
+    return bundle.version;
+  }
+  return null;
+}
+
+export function combinedReleaseTag(bundle, flags = {}) {
+  const version = resolveSourceVersion(bundle, flags);
+  const identifier = version ?? bundle.source?.revision;
+  if (!identifier) {
+    fail("cannot determine combined release tag: bundle lacks source version and revision");
+  }
+  return `plugins-${identifier}`;
+}
+
+export function combinedReleaseTitle(bundle, flags = {}) {
+  const version = resolveSourceVersion(bundle, flags);
+  const identifier = version ?? bundle.source?.revision;
+  return `Turboism plugins · ${identifier}`;
+}
+
+export function generateCombinedReleaseBody(bundle) {
+  const sorted = sortedBundleArtifacts(bundle);
+  const lines = [
+    "| Plugin ID | Version | SHA-256 |",
+    "|---|---|---|",
+  ];
+  for (const artifact of sorted) {
+    const pluginId = artifact.descriptor?.id ?? artifact.pluginId ?? artifact.module;
+    const version = artifact.descriptor?.version ?? artifact.version;
+    lines.push(`| \`${pluginId}\` | \`${version}\` | \`${artifact.sha256}\` |`);
+  }
+  return lines.join("\n");
+}
+
 function releaseTag(module, version) {
   return `plugin-${module}-v${version}`;
 }
 
 async function mainSyncReleases(argv) {
   const flags = parseFlags(argv, {
-    strings: ["bundle", "out", "catalog", "api-url", "repo", "asset-base", "token-env"],
+    strings: ["bundle", "out", "catalog", "api-url", "repo", "asset-base", "token-env", "source-version"],
   });
   const bundlePath = requireFlag(flags, "bundle");
   const outPath = requireFlag(flags, "out");
@@ -1317,6 +1384,58 @@ async function mainSyncReleases(argv) {
     }
   }
 
+  const tag = combinedReleaseTag(bundle, flags);
+  const title = combinedReleaseTitle(bundle, flags);
+  const body = generateCombinedReleaseBody(bundle);
+
+  const releasesUrl = `${apiUrl}/repos/${owner}/${repository}/releases/tags/${encodeURIComponent(tag)}`;
+  const existingResponse = await apiFetch(releasesUrl, {
+    token,
+    approvedHosts: apiNetwork.hosts,
+    allowHttp: apiNetwork.allowHttp,
+  });
+  let release;
+  let created = false;
+  if (existingResponse.status === 404) {
+    // Absent tag: resumable ONLY for versions not yet cataloged.
+    for (const artifact of bundle.artifacts) {
+      const key = `${artifact.module}@${artifact.version}`;
+      if (cataloged.has(key)) {
+        fail(`release "${tag}" for the cataloged ${key} is missing on GitHub; never recreating a cataloged release`);
+      }
+    }
+    release = await apiJson(`${apiUrl}/repos/${owner}/${repository}/releases`, {
+      token,
+      method: "POST",
+      approvedHosts: apiNetwork.hosts,
+      allowHttp: apiNetwork.allowHttp,
+      json: {
+        tag_name: tag,
+        name: title,
+        body,
+        draft: false,
+        prerelease: false,
+      },
+    });
+    created = true;
+    validateReleaseResponse(release, owner, repository, tag, { expectedName: title, requireUploadUrl: true });
+  } else if (existingResponse.ok) {
+    const bytes = await readResponseBounded(existingResponse, MAX_CATALOG_BYTES, releasesUrl);
+    release = strictJson(bytes, "release response");
+    validateReleaseResponse(release, owner, repository, tag, { expectedName: title, requireAssets: true });
+    for (const artifact of bundle.artifacts) {
+      const key = `${artifact.module}@${artifact.version}`;
+      const catalogedEntry = cataloged.get(key);
+      if (catalogedEntry !== undefined && release.html_url !== catalogedEntry.releaseUrl) {
+        fail(`release "${tag}" html_url conflicts with the cataloged ${key} releaseUrl; refusing to operate on it`);
+      }
+    }
+  } else {
+    const errorBody = await readErrorBody(existingResponse, releasesUrl);
+    fail(`cannot inspect release "${tag}": GitHub API ${existingResponse.status}: ${errorBody}`);
+  }
+
+  const assets = Array.isArray(release.assets) ? [...release.assets] : [];
   const releases = {};
   for (const artifact of bundle.artifacts) {
     if (!isPlainObject(artifact) || typeof artifact.module !== "string" || typeof artifact.version !== "string" || typeof artifact.asset !== "string" || typeof artifact.sha256 !== "string" || typeof artifact.size !== "number") {
@@ -1324,56 +1443,8 @@ async function mainSyncReleases(argv) {
     }
     const key = `${artifact.module}@${artifact.version}`;
     const catalogedEntry = cataloged.get(key);
-    const tag = releaseTag(artifact.module, artifact.version);
-    const releasesUrl = `${apiUrl}/repos/${owner}/${repository}/releases/tags/${encodeURIComponent(tag)}`;
-    const existingResponse = await apiFetch(releasesUrl, {
-      token,
-      approvedHosts: apiNetwork.hosts,
-      allowHttp: apiNetwork.allowHttp,
-    });
-    let release;
-    let created = false;
-    if (existingResponse.status === 404) {
-      // Absent tag: resumable ONLY for a version not yet cataloged.
-      if (catalogedEntry !== undefined) {
-        fail(`release "${tag}" for the cataloged ${key} is missing on GitHub; never recreating a cataloged release`);
-      }
-      release = await apiJson(`${apiUrl}/repos/${owner}/${repository}/releases`, {
-        token,
-        method: "POST",
-        approvedHosts: apiNetwork.hosts,
-        allowHttp: apiNetwork.allowHttp,
-        json: {
-          tag_name: tag,
-          name: tag,
-          body: `Public plugin release ${artifact.module} v${artifact.version} for the Turboism Plugin Directory.`,
-          draft: false,
-          prerelease: false,
-        },
-      });
-      created = true;
-      // T2: a freshly created response must pass the SAME strict gate
-      // (upload_url is required because the asset upload follows).
-      validateReleaseResponse(release, owner, repository, tag, { requireUploadUrl: true });
-    } else if (existingResponse.ok) {
-      const bytes = await readResponseBounded(existingResponse, MAX_CATALOG_BYTES, releasesUrl);
-      release = strictJson(bytes, "release response");
-      // T2: the strict shared gate on the resumed release (assets are
-      // required for the canonical-asset resolution below).
-      validateReleaseResponse(release, owner, repository, tag, { requireAssets: true });
-      // R4: a cataloged release must carry the exact authoritative metadata
-      // the catalog was published with.
-      if (catalogedEntry !== undefined && release.html_url !== catalogedEntry.releaseUrl) {
-        fail(`release "${tag}" html_url conflicts with the cataloged ${key} releaseUrl; refusing to operate on it`);
-      }
-    } else {
-      const body = await readErrorBody(existingResponse, releasesUrl);
-      fail(`cannot inspect release "${tag}": GitHub API ${existingResponse.status}: ${body}`);
-    }
+    const expectedArtifactUrl = `https://github.com/${owner}/${repository}/releases/download/${tag}/${artifact.asset}`;
 
-    // Find the canonical asset among the release's own assets. Exactly one
-    // canonical asset may exist (R7); duplicates are ambiguous and rejected.
-    const assets = Array.isArray(release.assets) ? release.assets : [];
     const canonicalAssets = assets.filter((asset) => isPlainObject(asset) && asset.name === artifact.asset);
     if (canonicalAssets.length > 1) {
       fail(`release "${tag}" has ${canonicalAssets.length} canonical assets named "${artifact.asset}"; ambiguous, refusing to operate`);
@@ -1381,16 +1452,13 @@ async function mainSyncReleases(argv) {
     const existingAsset = canonicalAssets[0];
     let asset;
     if (existingAsset !== undefined) {
-      // Existing asset: a strict size gate before any download, then an
-      // exact byte comparison. Never overwrite.
       if (typeof existingAsset.size === "number" && existingAsset.size !== artifact.size) {
         fail(`release "${tag}" asset "${artifact.asset}" is ${existingAsset.size} bytes, expected ${artifact.size}; differing bytes must never be overwritten`);
       }
       const assetUrl = existingAsset.browser_download_url;
-      if (typeof assetUrl !== "string" || assetUrl !== `https://github.com/${owner}/${repository}/releases/download/${tag}/${artifact.asset}`) {
+      if (typeof assetUrl !== "string" || assetUrl !== expectedArtifactUrl) {
         fail(`release "${tag}" asset "${artifact.asset}" has an unexpected browser_download_url`);
       }
-      // R4: a cataloged asset must be exactly the URL the catalog publishes.
       if (catalogedEntry !== undefined && assetUrl !== catalogedEntry.artifactUrl) {
         fail(`release "${tag}" asset "${artifact.asset}" conflicts with the cataloged ${key} artifact URL; refusing to operate on it`);
       }
@@ -1406,7 +1474,6 @@ async function mainSyncReleases(argv) {
       }
       asset = existingAsset;
     } else {
-      // Asset absent: resumable ONLY for a version not yet cataloged.
       if (catalogedEntry !== undefined) {
         fail(`release "${tag}" is already cataloged for ${key} but its asset is missing on GitHub; never re-uploading a cataloged asset`);
       }
@@ -1415,8 +1482,6 @@ async function mainSyncReleases(argv) {
       if (sha256Hex(jarBytes) !== artifact.sha256 || jarBytes.byteLength !== artifact.size) {
         fail(`bundle JAR ${artifact.jarPath} no longer matches the sidecar bytes`);
       }
-      // Uploads go to the release's own upload host (uploads.github.com for the default
-      // API); the token is approved for exactly that one host, never for redirects.
       const uploaded = await apiJson(uploadUrl, {
         token,
         method: "POST",
@@ -1428,15 +1493,16 @@ async function mainSyncReleases(argv) {
       if (!isPlainObject(uploaded) || uploaded.name !== artifact.asset || uploaded.size !== artifact.size) {
         fail(`asset upload for "${tag}" did not return the expected asset object`);
       }
+      assets.push(uploaded);
       asset = uploaded;
     }
-    if (typeof asset.browser_download_url !== "string" || asset.browser_download_url !== `https://github.com/${owner}/${repository}/releases/download/${tag}/${artifact.asset}`) {
+    if (typeof asset.browser_download_url !== "string" || asset.browser_download_url !== expectedArtifactUrl) {
       fail(`release "${tag}" asset "${artifact.asset}" has an invalid browser_download_url`);
     }
     if (typeof release.published_at !== "string" || !RE_DATE_TIME.test(release.published_at)) {
       fail(`release "${tag}" has an invalid published_at`);
     }
-    releases[`${artifact.module}@${artifact.version}`] = {
+    releases[key] = {
       module: artifact.module,
       version: artifact.version,
       tag,
@@ -1447,9 +1513,9 @@ async function mainSyncReleases(argv) {
       sha256: artifact.sha256,
       size: artifact.size,
     };
-    console.log(`${created ? "created" : "resumed"} release ${tag} -> ${release.html_url}`);
   }
   writeFileAtomic(outPath, Buffer.from(JSON.stringify({ format: "turboism.market-release.meta", schemaVersion: 1, releases }), "utf8"));
+  console.log(`${created ? "created" : "resumed"} release ${tag} (${bundle.artifacts.length} assets) -> ${release.html_url}`);
   console.log(`release metadata written to ${outPath}`);
 }
 
@@ -1582,14 +1648,14 @@ function loadCatalogAndBundle(catalogPath, bundlePath) {
  * deterministic values (tag/asset/URLs) and the CURRENT catalog publishedAt.
  * Never written anywhere.
  */
-function placeholderReleaseMetadata(artifact, catalog, plugin) {
-  const tag = releaseTag(artifact.module, artifact.version);
+function placeholderReleaseMetadata(artifact, catalog, plugin, tag) {
   const existing = plugin?.releases.find((release) => release.version === artifact.version);
   if (existing !== undefined) {
+    const existingTag = existing.artifact.url.match(/releases\/download\/([^/?#]+)\//)?.[1] ?? tag;
     return {
       module: artifact.module,
       version: artifact.version,
-      tag,
+      tag: existingTag,
       releaseUrl: existing.releaseUrl,
       publishedAt: existing.publishedAt,
       artifactUrl: existing.artifact.url,
@@ -1761,11 +1827,12 @@ export function checkTentativeCapacity(plugins, bytes) {
  * (validated with validateCatalogBytes on the tentative bytes).
  */
 async function mainPreflight(argv) {
-  const flags = parseFlags(argv, { strings: ["catalog", "bundle"] });
+  const flags = parseFlags(argv, { strings: ["catalog", "bundle", "source-version"] });
   const catalogPath = requireFlag(flags, "catalog");
   const bundlePath = requireFlag(flags, "bundle");
   const { catalog, bundle } = loadCatalogAndBundle(catalogPath, bundlePath);
   const revision = bundle.source.revision;
+  const tag = combinedReleaseTag(bundle, flags);
   // R3: explicit identity/version/byte verdicts first (same primitives as
   // ingest) so conflicts fail with their exact pre-merge messages.
   for (const artifact of sortedBundleArtifacts(bundle)) {
@@ -1777,14 +1844,14 @@ async function mainPreflight(argv) {
   const releasesFor = (artifact) => {
     const context = resolvePluginContext(catalog.plugins, artifact);
     if (!context.ok) fail(`preflight: ${context.message}`);
-    return placeholderReleaseMetadata(artifact, catalog, context.plugin);
+    return placeholderReleaseMetadata(artifact, catalog, context.plugin, tag);
   };
   const { plugins, changed } = mergeBundleIntoCatalog({ current: catalog, bundle, revision, releasesFor });
   const publishedAtFor = (key) => {
     const [moduleName, version] = key.split("@");
     const artifact = bundle.artifacts.find((a) => a.module === moduleName && a.version === version);
     if (artifact === undefined) fail(`preflight: cannot resolve placeholder metadata for ${key}`);
-    return placeholderReleaseMetadata(artifact, catalog, resolvePluginContext(catalog.plugins, artifact).plugin).publishedAt;
+    return placeholderReleaseMetadata(artifact, catalog, resolvePluginContext(catalog.plugins, artifact).plugin, tag).publishedAt;
   };
   const { semantic, bytes } = tentativeBumpedCatalog(catalog, { plugins }, changed, publishedAtFor);
   if (bytes.byteLength > MAX_CATALOG_BYTES) {
@@ -1841,11 +1908,8 @@ function normalizeReleaseMetadata(releasesFile) {
         if (moduleName !== null && version !== null && key !== `${moduleName}@${version}`) {
           issues.push({ path: `release metadata key "${key}"`, message: `must be exactly "<module>@<version>", got "<${moduleName}>@<${version}>"` });
         }
-        if (moduleName !== null && version !== null && tag !== null) {
-          const expectedTag = releaseTag(moduleName, version);
-          if (tag !== expectedTag) {
-            issues.push({ path: `${prefix}.tag`, message: `must be exactly ${expectedTag}` });
-          }
+        if (tag !== null && !/^[A-Za-z0-9_.-]+$/.test(tag)) {
+          issues.push({ path: `${prefix}.tag`, message: `"${tag}" is not a valid release tag` });
         }
         if (moduleName !== null && version !== null && assetName !== null) {
           const expectedAsset = `${moduleName}-${version}.jar`;
@@ -1853,7 +1917,7 @@ function normalizeReleaseMetadata(releasesFile) {
             issues.push({ path: `${prefix}.assetName`, message: `must be exactly ${expectedAsset}` });
           }
         }
-        if (moduleName !== null && version !== null && tag !== null) {
+        if (tag !== null) {
           const expectedReleaseUrl = `https://github.com/turboism/turboism-plugin-directory/releases/tag/${tag}`;
           if (meta.releaseUrl !== expectedReleaseUrl) {
             issues.push({ path: `${prefix}.releaseUrl`, message: `must be exactly ${expectedReleaseUrl}` });
@@ -2194,6 +2258,64 @@ async function mainVerifyProduction(argv) {
 }
 
 // ---------------------------------------------------------------------------
+// migrate-artifact-urls: produce the next signed-generation input with combined release URLs
+// ---------------------------------------------------------------------------
+
+export async function mainMigrateArtifactUrls(argv) {
+  const flags = parseFlags(argv, { strings: ["catalog", "target-tag", "repo", "out", "version"] });
+  const catalogPath = requireFlag(flags, "catalog");
+  const targetTag = flags["target-tag"] ?? "plugins-0.67.0";
+  const repo = flags["repo"] ?? DEFAULT_PUBLIC_REPO;
+  const targetVersion = flags["version"] ?? "0.67.0";
+  const outPath = flags["out"] ?? catalogPath;
+  const [owner, repository] = repo.split("/");
+
+  const sourceBytes = readBoundedFile(catalogPath, 5 * 1024 * 1024, "source catalog");
+  const validated = validateCatalogBytes(sourceBytes);
+  if (!validated.ok) {
+    fail(`source catalog is not a valid v2 catalog: ${validated.errors[0]?.message}`);
+  }
+  const current = validated.catalog;
+  const migratedPlugins = structuredClone(current.plugins);
+  let migratedCount = 0;
+
+  for (const plugin of migratedPlugins) {
+    for (const release of plugin.releases) {
+      if (targetVersion === null || release.version === targetVersion) {
+        const expectedReleaseUrl = `https://github.com/${owner}/${repository}/releases/tag/${targetTag}`;
+        const expectedArtifactUrl = `https://github.com/${owner}/${repository}/releases/download/${targetTag}/${release.artifact.fileName}`;
+        if (release.releaseUrl !== expectedReleaseUrl || release.artifact.url !== expectedArtifactUrl) {
+          release.releaseUrl = expectedReleaseUrl;
+          release.artifact.url = expectedArtifactUrl;
+          migratedCount++;
+        }
+      }
+    }
+  }
+
+  if (migratedCount === 0) {
+    console.log("migrate-artifact-urls: no entries required URL migration");
+    return;
+  }
+
+  const now = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  const publishedAt = [current.publishedAt, now].sort().at(-1);
+  const bumpedCatalog = {
+    ...current,
+    catalogVersion: current.catalogVersion + 1,
+    publishedAt,
+    plugins: migratedPlugins,
+  };
+  const canonicalBytes = Buffer.from(stringifyCanonical(bumpedCatalog, "catalog"), "utf8");
+  const check = validateCatalogBytes(canonicalBytes);
+  if (!check.ok) {
+    fail(`migrated catalog failed validation: ${check.errors[0]?.message}`);
+  }
+  writeFileAtomic(outPath, canonicalBytes);
+  console.log(`migrate-artifact-urls: migrated ${migratedCount} release URL(s) to ${targetTag}; catalogVersion ${current.catalogVersion} -> ${bumpedCatalog.catalogVersion}; wrote ${outPath}`);
+}
+
+// ---------------------------------------------------------------------------
 // CLI dispatch
 // ---------------------------------------------------------------------------
 
@@ -2204,12 +2326,16 @@ subcommands:
                    [--api-url <url>] [--poll-interval <sec>] [--poll-timeout <sec>]
                    [--token-env <env>]
   validate-bundle  --sidecar <file> --bundle-dir <dir> --out <file> --expected-revision <sha>
-  preflight        --catalog <file> --bundle <file>
+                   [--source-version <version>]
+  preflight        --catalog <file> --bundle <file> [--source-version <version>]
   sync-releases    --bundle <file> --out <file> --catalog <file> [--api-url <url>]
                    [--repo <owner/repo>] [--asset-base <url>] [--token-env <env>]
+                   [--source-version <version>]
   ingest           --catalog <file> --bundle <file> --releases <file> [--out <file>]
   hydrate          --catalog <file> [--bundle <file>] --dir <dir> --manifest-out <file>
                    [--asset-base <url>]
+  migrate-artifact-urls --catalog <file> [--target-tag <tag>] [--repo <owner/repo>]
+                        [--version <version>] [--out <file>]
   verify-production --base-url <provider-origin> --keys <allowlist.json>
                     [--max-redirects <0..5>]`;
 
@@ -2234,6 +2360,9 @@ async function main() {
         break;
       case "hydrate":
         await mainHydrate(args);
+        break;
+      case "migrate-artifact-urls":
+        await mainMigrateArtifactUrls(args);
         break;
       case "verify-production":
         await mainVerifyProduction(args);

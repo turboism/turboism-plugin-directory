@@ -182,12 +182,12 @@ function mcpArtifact(overrides = {}) {
 }
 
 /** Canonical release metadata file exactly as sync-releases writes it. */
-function writeReleaseMeta(dir, entries) {
+function writeReleaseMeta(dir, entries, defaultTag = `plugins-${SOURCE_SHA}`) {
   const file = path.join(dir, "releases.json");
   const releases = {};
   for (const entry of entries) {
     const { module, version } = entry;
-    const tag = `plugin-${module}-v${version}`;
+    const tag = entry.tag ?? defaultTag;
     const assetName = `${module}-${version}.jar`;
     releases[`${module}@${version}`] = {
       module,
@@ -859,20 +859,21 @@ test("sync-releases creates a release and uploads the asset once when the tag is
   const base = await stub.start();
   try {
     const { normalized, catalogFile } = await normalizeBundle(dir);
+    const tag = `plugins-${SOURCE_SHA}`;
     const outFile = path.join(dir, "releases.json");
     const result = await runIngest(syncArgs(base, normalized, outFile, catalogFile), { env: { GITHUB_TOKEN: "provider-token" } });
     assert.ok(result.ok, result.stderr);
-    assert.match(result.stdout, /created release plugin-backup-v0\.1\.0/);
+    assert.match(result.stdout, new RegExp(`created release ${tag}`));
     const posts = stub.log.filter((entry) => entry.method === "POST");
     assert.equal(posts.length, 2, "exactly one release creation and one asset upload");
     assert.equal(posts.filter((entry) => entry.path.endsWith("/assets?name=backup-0.1.0.jar")).length, 1);
     assert.equal(posts[0].auth, "Bearer provider-token");
     const meta = JSON.parse(readFileSync(outFile, "utf8"));
     const entry = meta.releases["backup@0.1.0"];
-    assert.equal(entry.tag, "plugin-backup-v0.1.0");
+    assert.equal(entry.tag, tag);
     assert.equal(entry.publishedAt, PUBLISHED_AT);
-    assert.equal(entry.releaseUrl, `https://github.com/${PUBLIC_REPO}/releases/tag/plugin-backup-v0.1.0`);
-    assert.equal(entry.artifactUrl, `https://github.com/${PUBLIC_REPO}/releases/download/plugin-backup-v0.1.0/backup-0.1.0.jar`);
+    assert.equal(entry.releaseUrl, `https://github.com/${PUBLIC_REPO}/releases/tag/${tag}`);
+    assert.equal(entry.artifactUrl, `https://github.com/${PUBLIC_REPO}/releases/download/${tag}/backup-0.1.0.jar`);
   } finally {
     await stub.stop();
     rmSync(dir, { recursive: true, force: true });
@@ -886,7 +887,7 @@ test("sync-releases resumes a byte-identical release without uploading, and uplo
   try {
     const { bundle, normalized, catalogFile } = await normalizeBundle(dir);
     const jarBytes = readFileSync(path.join(bundle.bundleDir, "backup-0.1.0.jar"));
-    const tag = "plugin-backup-v0.1.0";
+    const tag = `plugins-${SOURCE_SHA}`;
     // Pre-existing release with the identical asset (bytes staged before the
     // asset object is created so its reported size is accurate).
     stub.assetBytes.set(`${tag}/backup-0.1.0.jar`, jarBytes);
@@ -895,7 +896,7 @@ test("sync-releases resumes a byte-identical release without uploading, and uplo
     const outFile = path.join(dir, "releases.json");
     let result = await runIngest(syncArgs(base, normalized, outFile, catalogFile), { env: { GITHUB_TOKEN: "provider-token" } });
     assert.ok(result.ok, result.stderr);
-    assert.match(result.stdout, /resumed release plugin-backup-v0\.1\.0/);
+    assert.match(result.stdout, new RegExp(`resumed release ${tag}`));
     assert.equal(stub.log.filter((entry) => entry.method === "POST").length, 0, "no upload for a byte-identical asset");
 
     // Deleted asset (previous upload failed): the release resumes with an upload.
@@ -917,7 +918,7 @@ test("sync-releases fails closed on differing bytes, drafts, and bad metadata", 
   try {
     const { bundle, normalized, catalogFile } = await normalizeBundle(dir);
     const jarBytes = readFileSync(path.join(bundle.bundleDir, "backup-0.1.0.jar"));
-    const tag = "plugin-backup-v0.1.0";
+    const tag = `plugins-${SOURCE_SHA}`;
     const outFile = path.join(dir, "releases.json");
     const run = async () => await runIngest(syncArgs(base, normalized, outFile, catalogFile), { env: { GITHUB_TOKEN: "provider-token" }, expectFailure: true });
 
@@ -994,7 +995,7 @@ test("ingest creates the first release with a single catalogVersion bump and is 
     assert.equal(release.status, "active");
     assert.deepEqual(release.platforms, ["windows-x64"]);
     assert.equal(release.sourceRevision, SOURCE_SHA);
-    assert.equal(release.releaseUrl, `https://github.com/${PUBLIC_REPO}/releases/tag/plugin-backup-v0.1.0`);
+    assert.equal(release.releaseUrl, `https://github.com/${PUBLIC_REPO}/releases/tag/plugins-${SOURCE_SHA}`);
     assert.equal(release.artifact.fileName, "backup-0.1.0.jar");
     assert.equal(release.artifact.sha256, bundle.artifacts[0].sha256);
     // A repeated identical run is a byte-identical no-op.
@@ -1602,7 +1603,7 @@ test("R4: sync-releases never recreates or re-uploads an already-cataloged relea
     const normalized = path.join(dir, "normalized.json");
     await runIngest(["validate-bundle", "--expected-revision", SOURCE_SHA, "--sidecar", bundle.sidecarPath, "--bundle-dir", bundle.bundleDir, "--out", normalized]);
     const jarBytes = readFileSync(path.join(bundle.bundleDir, "backup-0.1.0.jar"));
-    const tag = "plugin-backup-v0.1.0";
+    const tag = `plugins-${SOURCE_SHA}`;
     const outFile = path.join(dir, "releases.json");
     const runSync = () => runIngest(syncArgs(base, normalized, outFile, sourceCatalog), { env: { GITHUB_TOKEN: "provider-token" }, expectFailure: true });
     const postCount = () => stub.log.filter((entry) => entry.method === "POST").length;
@@ -1638,7 +1639,7 @@ test("R4: sync-releases fails closed when cataloged authoritative metadata confl
     // Author a catalog whose releaseUrl/artifact URL differ from the
     // canonical GitHub release for the same tag/version.
     const sourceCatalog = path.join(dir, "catalog.json");
-    const tag = "plugin-backup-v0.1.0";
+    const tag = `plugins-${SOURCE_SHA}`;
     const assetName = "backup-0.1.0.jar";
     writeFileSync(
       sourceCatalog,
@@ -1702,7 +1703,7 @@ test("R7: sync-releases rejects prerelease, name-mismatch, and duplicate canonic
   try {
     const { bundle, normalized, catalogFile } = await normalizeBundle(dir);
     const jarBytes = readFileSync(path.join(bundle.bundleDir, "backup-0.1.0.jar"));
-    const tag = "plugin-backup-v0.1.0";
+    const tag = `plugins-${SOURCE_SHA}`;
     const outFile = path.join(dir, "releases.json");
     const runSync = () => runIngest(syncArgs(base, normalized, outFile, catalogFile), { env: { GITHUB_TOKEN: "provider-token" }, expectFailure: true });
 
@@ -1996,7 +1997,7 @@ test("T2: strict release-response booleans on resumed AND created releases", asy
   try {
     const { bundle, normalized, catalogFile } = await normalizeBundle(dir);
     const jarBytes = readFileSync(path.join(bundle.bundleDir, "backup-0.1.0.jar"));
-    const tag = "plugin-backup-v0.1.0";
+    const tag = `plugins-${SOURCE_SHA}`;
     const outFile = path.join(dir, "releases.json");
     const runSync = () => runIngest(syncArgs(base, normalized, outFile, catalogFile), { env: { GITHUB_TOKEN: "provider-token" }, expectFailure: true });
 

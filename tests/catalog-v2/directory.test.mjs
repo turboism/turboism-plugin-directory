@@ -20,19 +20,18 @@ function tempDir() {
   return mkdtempSync(path.join(tmpdir(), "catalog-v2-directory-"));
 }
 
-test("lib/directory.json is retired and current generation 00000001 loads cleanly as empty", async () => {
+test("lib/directory.json is retired and current committed generation loads cleanly", async () => {
   assert.equal(existsSync(path.join(process.cwd(), "lib", "directory.json")), false);
   const snapshot = loadDirectorySnapshot();
-  assert.equal(snapshot.generationId, "00000001");
-  assert.equal(snapshot.catalogVersion, 1);
-  assert.deepEqual(snapshot.plugins, []);
-  assert.deepEqual(snapshot.availableTags, []);
-  assert.deepEqual(snapshot.availableCategories, []);
+  assert.equal(snapshot.generationId, "00000002");
+  assert.equal(snapshot.catalogVersion, 2);
+  assert.equal(snapshot.plugins.length, 24);
 
   const response = serveLegacyPlugins();
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "public, max-age=60, stale-while-revalidate=86400");
-  assert.deepEqual(await response.json(), []);
+  const data = await response.json();
+  assert.equal(data.length, 24);
 });
 
 test("populated signed generation projects latest active releases, 5 locales with fallbacks, Cubism versions, SHA-256, and download URLs", async () => {

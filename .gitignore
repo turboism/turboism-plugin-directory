@@ -3,6 +3,7 @@
 /out
 /build
 /.vercel
+/artifacts
 .env*
 *.tsbuildinfo
 next-env.d.ts

@@ -1,6 +1,7 @@
 /** Browser regression for one independently deployed site; never launches native QQ. */
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {existsSync} from 'node:fs';
 import {mkdir,writeFile} from 'node:fs/promises';
 const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE||'playwright');
 const site=process.env.SITE_NAME||'www',local=process.env.SITE_ORIGIN||'http://127.0.0.1:3000';
@@ -9,7 +10,11 @@ const routes={www:['/','/download','/sponsor'],docs:['/docs/en','/docs/en/use/ov
 assert.ok(routes,'Unknown site');
 const report=[];await mkdir('artifacts/site-language',{recursive:true});
 for(let i=0;i<60;i++){try{if((await fetch(local+routes[0],{signal:AbortSignal.timeout(25000)})).ok)break;}catch{}if(i===59)throw Error('Server did not become ready');await new Promise(r=>setTimeout(r,1000));}
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({
+  headless: true,
+  executablePath: process.env.CHROMIUM_PATH || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),
+  args: ['--no-sandbox'],
+});
 try {
  for(const width of [1440,390])for(const routePath of routes){
   const context=await browser.newContext({viewport:{width,height:844},reducedMotion:'reduce'});

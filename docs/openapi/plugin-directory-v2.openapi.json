@@ -492,7 +492,9 @@
         "enum": [
           "en",
           "zh-Hans",
-          "ja"
+          "zh-Hant",
+          "ja",
+          "ko"
         ],
         "default": "en"
       },
@@ -533,7 +535,13 @@
           "zh-Hans": {
             "$ref": "#/components/schemas/LocalizedMetadata"
           },
+          "zh-Hant": {
+            "$ref": "#/components/schemas/LocalizedMetadata"
+          },
           "ja": {
+            "$ref": "#/components/schemas/LocalizedMetadata"
+          },
+          "ko": {
             "$ref": "#/components/schemas/LocalizedMetadata"
           }
         }

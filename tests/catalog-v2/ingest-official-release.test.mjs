@@ -71,6 +71,9 @@ const DESCRIPTOR_SUBSET_KEYS = ["id", "version", "name", "description", "author"
 function subset(descriptor) {
   const out = {};
   for (const key of DESCRIPTOR_SUBSET_KEYS) out[key] = descriptor[key];
+  out.publishedEvents = descriptor.publishedEvents ?? [];
+  out.subscribedEvents = descriptor.subscribedEvents ?? [];
+  out.embeddedContracts = descriptor.embeddedContracts ?? [];
   return out;
 }
 
@@ -102,7 +105,9 @@ function makeLocalizations(name, description) {
   return {
     en: { name, description },
     "zh-Hans": { name: `同步${name}`, description: `中文${description}` },
+    "zh-Hant": { name: `同步繁體${name}`, description: `繁體${description}` },
     ja: { name: `${name}同期`, description: `日本語${description}` },
+    ko: { name: `${name} 동기화`, description: `한국어 ${description}` },
   };
 }
 
@@ -498,13 +503,43 @@ test("verify-run proves the source run identity, polls to completion, and extrac
   }
 });
 
+test("verify-run accepts publish-selected-plugins.yml (push or workflow_dispatch) and release.yml (workflow_dispatch)", async () => {
+  const dir = tempDir();
+  const stub = new ApiStub();
+  const base = await stub.start();
+  try {
+    const bundle = buildBundle(dir, [backupArtifact()]);
+    const zip = makeRawZip([
+      { name: "market-release.json", data: readFileSync(bundle.sidecarPath), externalAttrs: 0o100644 * 0x10000 },
+      { name: "backup-0.1.0.jar", data: readFileSync(path.join(bundle.bundleDir, "backup-0.1.0.jar")), externalAttrs: 0o100644 * 0x10000 },
+    ]);
+    stub.artifacts.set("77", makeArtifact({ zip }));
+    for (const [index, overrides] of [
+      { path: ".github/workflows/publish-selected-plugins.yml", event: "push" },
+      { path: ".github/workflows/publish-selected-plugins.yml", event: "workflow_dispatch" },
+      { path: ".github/workflows/release.yml", event: "workflow_dispatch" },
+    ].entries()) {
+      stub.runs.set("123", makeRun(overrides));
+      const outDir = path.join(dir, `accepted-${index}`);
+      const result = await runIngest(verifyArgs(base, { out: outDir }), { env: { TURBOISM_RELEASE_ARTIFACT_READ_TOKEN: "source-read-token" } });
+      assert.ok(result.ok, result.stderr);
+    }
+  } finally {
+    await stub.stop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("verify-run fails closed on forged run identity (repo/path/event/branch/SHA)", async () => {
   const stub = new ApiStub();
   const base = await stub.start();
   const cases = [
     { repository: { full_name: "evil/turboism" } },
     { path: ".github/workflows/other.yml" },
-    { event: "workflow_dispatch" },
+    { path: ".github/workflows/publish-selected-plugins.yml", event: "pull_request" },
+    { path: ".github/workflows/publish-selected-plugins.yml", event: "schedule" },
+    { path: ".github/workflows/release.yml", event: "push" },
+    { path: ".github/workflows/release.yml", event: "schedule" },
     { head_branch: "dev" },
     { head_sha: "1111111111111111111111111111111111111111" },
   ];
@@ -719,7 +754,12 @@ test("validate-bundle rejects malformed, unknown-field, and duplicated sidecars"
       [(s) => (s.artifacts[0].localizations.en = undefined), "missing locale"],
       [(s) => (s.artifacts[0].localizations.fr = { name: "x", description: "y" }), "extra locale"],
       [(s) => (s.artifacts[0].localizations.en.name = ""), "blank localized name"],
+      [(s) => (s.artifacts[0].localizations.ko.name = ""), "blank ko localized name"],
+      [(s) => (s.artifacts[0].localizations["zh-Hant"].description = "x".repeat(501)), "oversized zh-Hant description"],
       [(s) => (s.artifacts[0].localizations.en.description = "x".repeat(501)), "oversized description"],
+      [(s) => (s.artifacts[0].descriptor.publishedEvents = "not-an-array"), "bad publishedEvents"],
+      [(s) => (s.artifacts[0].descriptor.subscribedEvents = [123]), "bad subscribedEvents"],
+      [(s) => (s.artifacts[0].descriptor.embeddedContracts = "not-an-array"), "bad embeddedContracts"],
       [(s) => (s.artifacts[0].sha256 = "f".repeat(64)), "hash mismatch"],
       [(s) => (s.artifacts[0].size = 1), "size mismatch"],
       [(s) => (s.artifacts[0].descriptorSha256 = "e".repeat(64)), "descriptor hash mismatch"],
@@ -944,6 +984,10 @@ test("ingest creates the first release with a single catalogVersion bump and is 
     assert.equal(backup.trust, "official");
     assert.equal(backup.repository, "https://github.com/turboism/turboism-plugin-directory");
     assert.deepEqual(backup.localizations["zh-Hans"], { name: "同步WebDAV Auto-Backup Sync Plugin", summary: "中文backup" });
+    assert.deepEqual(backup.localizations["zh-Hant"], { name: "同步繁體WebDAV Auto-Backup Sync Plugin", summary: "繁體backup" });
+    assert.deepEqual(backup.localizations.ja, { name: "WebDAV Auto-Backup Sync Plugin同期", summary: "日本語backup" });
+    assert.deepEqual(backup.localizations.ko, { name: "WebDAV Auto-Backup Sync Plugin 동기화", summary: "한국어 backup" });
+    assert.deepEqual(Object.keys(backup.localizations), ["zh-Hans", "zh-Hant", "ja", "ko"]);
     const release = backup.releases[0];
     assert.equal(release.version, "0.1.0");
     assert.equal(release.channel, "preview");

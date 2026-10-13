@@ -47,6 +47,19 @@ test("populated catalog with official category validates and preserves tag order
   assert.equal(catalog.plugins[0].releases[0].tags[0], "project");
 });
 
+test("catalog localizations accept optional zh-Hant and ko in canonical order", () => {
+  const localizations = {
+    "zh-Hans": { name: "项目检查器", summary: "检查当前 Cubism 项目与工作区。" },
+    "zh-Hant": { name: "專案檢查器", summary: "檢查目前 Cubism 專案與工作區。" },
+    ja: { name: "プロジェクトインスペクター", summary: "アクティブな Cubism プロジェクトを検査します。" },
+    ko: { name: "프로젝트 인스펙터", summary: "활성 Cubism 프로젝트와 작업 공간을 검사합니다." },
+  };
+  const catalog = ok(Buffer.from(JSON.stringify(makeCatalog({ plugins: [makePlugin({ localizations })] }))));
+  assert.deepEqual(Object.keys(catalog.plugins[0].localizations), ["zh-Hans", "zh-Hant", "ja", "ko"]);
+  invalid(Buffer.from(JSON.stringify(makeCatalog({ plugins: [makePlugin({ localizations: { ko: { name: "", summary: "b" } } })] }))));
+  invalid(Buffer.from(JSON.stringify(makeCatalog({ plugins: [makePlugin({ localizations: { "zh-Hant": { name: "a", summary: "" } } })] }))));
+});
+
 test("unknown fields reject at every object level", () => {
   const cases = [
     makeCatalog({ extra: true }),

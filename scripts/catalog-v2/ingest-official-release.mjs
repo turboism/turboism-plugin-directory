@@ -141,7 +141,13 @@ const CHANNEL_VALUES = ["stable", "preview"];
 const PERMISSION_SCOPE_VALUES = ["application", "user"];
 const DEPENDENCY_TYPE_VALUES = ["required", "optional"];
 const ORDERING_VALUES = ["none", "before", "after"];
-const LOCALE_VALUES = ["en", "zh-Hans", "ja"];
+const REQUIRED_LOCALES = ["en", "zh-Hans", "ja"];
+const CATALOG_LOCALIZATION_LOCALES = ["zh-Hans", "zh-Hant", "ja", "ko"];
+const LOCALE_VALUES = ["en", "zh-Hans", "zh-Hant", "ja", "ko"];
+const ACCEPTED_SOURCE_WORKFLOW_EVENTS = {
+  ".github/workflows/publish-selected-plugins.yml": ["push", "workflow_dispatch"],
+  ".github/workflows/release.yml": ["workflow_dispatch"],
+};
 
 const DEFAULT_API_URL = "https://api.github.com";
 const DEFAULT_ASSET_BASE = "https://github.com";
@@ -551,10 +557,14 @@ function checkSourceRun(run, expectedSha, runId) {
   if (!isPlainObject(repository) || typeof repository.full_name !== "string" || repository.full_name !== DEFAULT_SOURCE_REPO) {
     issues.push(`repository is not exactly ${DEFAULT_SOURCE_REPO}`);
   }
-  if (typeof run.path !== "string" || run.path !== ".github/workflows/publish-selected-plugins.yml") {
-    issues.push(`workflow path is not exactly .github/workflows/publish-selected-plugins.yml (got ${JSON.stringify(run.path)})`);
+  const acceptedEvents = typeof run.path === "string" ? ACCEPTED_SOURCE_WORKFLOW_EVENTS[run.path] : undefined;
+  if (acceptedEvents === undefined) {
+    issues.push(
+      `workflow path is not an accepted source workflow (${Object.keys(ACCEPTED_SOURCE_WORKFLOW_EVENTS).join(" or ")}, got ${JSON.stringify(run.path)})`,
+    );
+  } else if (!acceptedEvents.includes(run.event)) {
+    issues.push(`event ${JSON.stringify(run.event)} is not allowed for ${run.path} (expected ${acceptedEvents.join(" or ")})`);
   }
-  if (run.event !== "push") issues.push(`event is not exactly push (got ${JSON.stringify(run.event)})`);
   if (run.head_branch !== "main") issues.push(`branch is not exactly main (got ${JSON.stringify(run.head_branch)})`);
   if (run.head_sha !== expectedSha) issues.push(`head SHA ${JSON.stringify(run.head_sha)} does not equal the claimed source SHA`);
   if (issues.length > 0) {
@@ -763,6 +773,8 @@ async function mainVerifyRun(argv) {
 
 const POLICY_KEYS = ["channel", "cubismVersions", "repository", "support"];
 const DESCRIPTOR_KEYS = ["id", "version", "name", "description", "author", "license", "category", "tags", "turboismApi", "environment", "dependencies", "permissions"];
+const OPTIONAL_DESCRIPTOR_KEYS = ["publishedEvents", "subscribedEvents", "embeddedContracts"];
+const ALLOWED_DESCRIPTOR_KEYS = [...DESCRIPTOR_KEYS, ...OPTIONAL_DESCRIPTOR_KEYS];
 const ENVIRONMENT_KEYS = ["requiresCubism", "ui"];
 const LOCALIZATION_KEYS = ["name", "description"];
 const ARTIFACT_KEYS = ["project", "module", "asset", "sha256", "size", "descriptorSha256", "policy", "descriptor", "localizations"];
@@ -863,8 +875,15 @@ function validateDescriptorSubset(descriptor, path, issues) {
     issues.push({ path, message: "must be an object" });
     return null;
   }
-  checkKeysOnly(descriptor, DESCRIPTOR_KEYS, path, issues);
+  checkKeysOnly(descriptor, ALLOWED_DESCRIPTOR_KEYS, path, issues);
   checkRequiredFields(descriptor, DESCRIPTOR_KEYS, path, issues);
+  for (const eventKey of OPTIONAL_DESCRIPTOR_KEYS) {
+    if (descriptor[eventKey] !== undefined) {
+      if (!Array.isArray(descriptor[eventKey]) || !descriptor[eventKey].every(isPlainObject)) {
+        issues.push({ path: `${path}.${eventKey}`, message: "must be an array of objects" });
+      }
+    }
+  }
   checkString(descriptor, "id", path, issues, { min: 1, max: 128, re: RE_PLUGIN_ID, label: "plugin id" });
   const version = checkString(descriptor, "version", path, issues, { min: 1, max: 64, label: "version" });
   if (version !== null && parseStrictVersion(version) === null) {
@@ -923,9 +942,10 @@ function validateLocalizations(localizations, path, issues) {
     return null;
   }
   checkKeysOnly(localizations, LOCALE_VALUES, path, issues);
-  checkRequiredFields(localizations, LOCALE_VALUES, path, issues);
+  checkRequiredFields(localizations, REQUIRED_LOCALES, path, issues);
   for (const locale of LOCALE_VALUES) {
     const item = localizations[locale];
+    if (item === undefined) continue;
     const itemPath = `${path}.${locale}`;
     if (!isPlainObject(item)) {
       issues.push({ path: itemPath, message: "must be an object" });
@@ -1840,6 +1860,15 @@ function buildReleaseEntry(artifact, meta, revision) {
 
 function buildPluginEntry(artifact, release) {
   const descriptor = artifact.descriptor;
+  const localizations = {};
+  for (const locale of CATALOG_LOCALIZATION_LOCALES) {
+    if (artifact.localizations[locale] !== undefined) {
+      localizations[locale] = {
+        name: artifact.localizations[locale].name,
+        summary: artifact.localizations[locale].description,
+      };
+    }
+  }
   return {
     id: descriptor.id,
     slug: artifact.module,
@@ -1850,10 +1879,7 @@ function buildPluginEntry(artifact, release) {
     license: descriptor.license,
     repository: artifact.policy.repository,
     support: artifact.policy.support,
-    localizations: {
-      "zh-Hans": { name: artifact.localizations["zh-Hans"].name, summary: artifact.localizations["zh-Hans"].description },
-      ja: { name: artifact.localizations.ja.name, summary: artifact.localizations.ja.description },
-    },
+    localizations,
     releases: [release],
   };
 }

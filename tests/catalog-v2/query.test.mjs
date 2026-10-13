@@ -74,7 +74,12 @@ function fixtureCatalog() {
       summary: "Generate lipsync from audio.",
       category: "analysis",
       tags: ["lipsync", "audio"],
-      localizations: { "zh-Hans": { name: "自动口型同步", summary: "从音频生成口型动画。" }, ja: { name: "自動リップシンク", summary: "音声からリップシンクを生成します。" } },
+      localizations: {
+        "zh-Hans": { name: "自动口型同步", summary: "从音频生成口型动画。" },
+        "zh-Hant": { name: "自動口型同步", summary: "從音訊生成口型動畫。" },
+        ja: { name: "自動リップシンク", summary: "音声からリップシンクを生成します。" },
+        ko: { name: "자동 립싱크", summary: "오디오에서 립싱크를 생성합니다." },
+      },
       releases: [
         makeRelease({ version: "0.1.0", publishedAt: "2026-08-05T00:00:00Z", category: "analysis", tags: ["lipsync", "audio"], requiresCubism: false, cubismVersions: [] }),
       ],
@@ -263,6 +268,12 @@ test("locale changes display fields and falls back to English", () => {
   assert.equal(ja.items[0].displayName, "自動リップシンク");
   const zh = searchOf("q=lipsync&locale=zh-Hans");
   assert.equal(zh.items[0].displayName, "自动口型同步");
+  const zhHant = searchOf("q=lipsync&locale=zh-Hant");
+  assert.equal(zhHant.items[0].displayName, "自動口型同步");
+  const ko = searchOf("q=lipsync&locale=ko");
+  assert.equal(ko.items[0].displayName, "자동 립싱크");
+  const fallback = searchOf("q=project&locale=ko");
+  assert.equal(fallback.items[0].displayName, "Project Inspector");
   const en = searchOf("q=lipsync");
   assert.equal(en.items[0].displayName, "Auto Lipsync");
 });

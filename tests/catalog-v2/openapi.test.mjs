@@ -84,4 +84,6 @@ test("limits in the OpenAPI match the implementation", () => {
   assert.equal(spec.components.schemas.SearchResponse.properties.items.maxItems, 100);
   assert.equal(spec.components.schemas.Pagination.properties.pageSize.maximum, 100);
   assert.equal(spec.components.schemas.NormalizedQuery.properties.q.maxLength, 200);
+  assert.deepEqual(spec.components.schemas.Locale.enum, ["en", "zh-Hans", "zh-Hant", "ja", "ko"]);
+  assert.deepEqual(Object.keys(spec.components.schemas.Localizations.properties), ["zh-Hans", "zh-Hant", "ja", "ko"]);
 });

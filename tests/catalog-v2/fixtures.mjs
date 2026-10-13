@@ -175,6 +175,136 @@ export function makeCatalog(overrides = {}) {
 }
 
 /**
+ * Build a multi-plugin populated catalog fixture covering 5 locales,
+ * multiple versions (including yanked), official + reviewed-third-party trust,
+ * and Cubism-bound + Editor-independent releases.
+ */
+export function makePopulatedDirectoryCatalog() {
+  return makeCatalog({
+    catalogVersion: 3,
+    publishedAt: "2026-08-20T09:00:00Z",
+    plugins: [
+      makePlugin({
+        id: "dev.turboism.plugin.mcp",
+        slug: "mcp",
+        name: "Turboism MCP Server",
+        summary: "Expose Cubism workspace tools over a local MCP server.",
+        trust: "official",
+        author: "Turboism Contributors",
+        license: "Project License",
+        repository: "https://github.com/turboism/Turboism",
+        support: "https://github.com/turboism/Turboism/issues",
+        localizations: {
+          "zh-Hans": { name: "Turboism MCP 服务", summary: "通过本地 MCP 服务暴露 Cubism 工作区工具。" },
+          "zh-Hant": { name: "Turboism MCP 服務", summary: "透過本機 MCP 服務暴露 Cubism 工作區工具。" },
+          ja: { name: "Turboism MCP サーバー", summary: "ローカル MCP サーバー経由で Cubism ワークスペースツールを公開します。" },
+          ko: { name: "Turboism MCP 서버", summary: "로컬 MCP 서버를 통해 Cubism 작업 공간 도구를 노출합니다." },
+        },
+        releases: [
+          makeRelease({
+            version: "0.1.0",
+            channel: "stable",
+            status: "active",
+            publishedAt: "2026-08-16T09:00:00Z",
+            category: "integration",
+            tags: ["mcp", "automation"],
+            turboismApi: "[0.1.0,0.2.0)",
+            requiresCubism: true,
+            cubismVersions: ["5.3.00", "5.3.02"],
+            releaseUrl: "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugin-mcp-v0.1.0",
+            artifact: {
+              mediaType: "application/java-archive",
+              fileName: "mcp-0.1.0.jar",
+              url: "https://github.com/turboism/turboism-plugin-directory/releases/download/plugin-mcp-v0.1.0/mcp-0.1.0.jar",
+              sha256: "1111111111111111111111111111111111111111111111111111111111111111",
+              descriptorSha256: "2222222222222222222222222222222222222222222222222222222222222222",
+              size: 40960,
+            },
+          }),
+          makeRelease({
+            version: "0.2.0",
+            channel: "stable",
+            status: "active",
+            publishedAt: "2026-08-20T09:00:00Z",
+            category: "integration",
+            tags: ["mcp", "automation", "agent"],
+            turboismApi: "[0.1.0,0.2.0)",
+            requiresCubism: true,
+            cubismVersions: ["5.3.00", "5.3.02", "5.3.04"],
+            releaseUrl: "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugin-mcp-v0.2.0",
+            artifact: {
+              mediaType: "application/java-archive",
+              fileName: "mcp-0.2.0.jar",
+              url: "https://github.com/turboism/turboism-plugin-directory/releases/download/plugin-mcp-v0.2.0/mcp-0.2.0.jar",
+              sha256: "3333333333333333333333333333333333333333333333333333333333333333",
+              descriptorSha256: "4444444444444444444444444444444444444444444444444444444444444444",
+              size: 49152,
+            },
+          }),
+        ],
+      }),
+      makePlugin({
+        id: "dev.turboism.plugin.webdav",
+        slug: "webdav-backup",
+        name: "WebDAV Auto-Backup",
+        summary: "Sync Cubism project backups to a WebDAV endpoint.",
+        trust: "official",
+        author: "Turboism Contributors",
+        license: "Project License",
+        repository: "https://github.com/turboism/Turboism",
+        support: "https://github.com/turboism/Turboism/issues",
+        localizations: {
+          "zh-Hans": { name: "WebDAV 自动备份", summary: "将 Cubism 项目备份同步至 WebDAV 端点。" },
+          ja: { name: "WebDAV 自動バックアップ", summary: "Cubism プロジェクトのバックアップを WebDAV に同期します。" },
+        },
+        releases: [
+          makeRelease({
+            version: "0.1.0",
+            channel: "stable",
+            status: "active",
+            publishedAt: "2026-08-18T09:00:00Z",
+            category: "workflow",
+            tags: ["backup", "webdav"],
+            turboismApi: "[0.1.0,0.2.0)",
+            requiresCubism: false,
+            cubismVersions: [],
+            releaseUrl: "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugin-webdav-backup-v0.1.0",
+            artifact: {
+              mediaType: "application/java-archive",
+              fileName: "webdav-backup-0.1.0.jar",
+              url: "https://github.com/turboism/turboism-plugin-directory/releases/download/plugin-webdav-backup-v0.1.0/webdav-backup-0.1.0.jar",
+              sha256: "5555555555555555555555555555555555555555555555555555555555555555",
+              descriptorSha256: "6666666666666666666666666666666666666666666666666666666666666666",
+              size: 32768,
+            },
+          }),
+          makeRelease({
+            version: "0.2.0",
+            channel: "preview",
+            status: "yanked",
+            publishedAt: "2026-08-19T09:00:00Z",
+            category: "workflow",
+            tags: ["backup", "webdav"],
+            turboismApi: "[0.1.0,0.2.0)",
+            requiresCubism: false,
+            cubismVersions: [],
+            releaseUrl: "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugin-webdav-backup-v0.2.0",
+            artifact: {
+              mediaType: "application/java-archive",
+              fileName: "webdav-backup-0.2.0.jar",
+              url: "https://github.com/turboism/turboism-plugin-directory/releases/download/plugin-webdav-backup-v0.2.0/webdav-backup-0.2.0.jar",
+              sha256: "7777777777777777777777777777777777777777777777777777777777777777",
+              descriptorSha256: "8888888888888888888888888888888888888888888888888888888888888888",
+              size: 33000,
+            },
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+/**
  * Provision a signed pair plus allowlist in a temp directory (the HTTP test
  * seam). Returns the dir paths and key material.
  */

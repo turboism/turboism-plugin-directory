@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 /**
- * Validate the plugin directory entries before merge.
- * Fails CI when an entry is malformed, duplicated, or missing required fields.
+ * Validate the signed Plugin Directory v2 catalog and projected directory entries.
+ * Fails CI when the source catalog, deployed generation, or any projected entry is invalid.
  */
-import directory from "../lib/directory.json" with { type: "json" };
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { validateCatalogBytes } from "../lib/catalog-v2/catalog.mjs";
+import { loadDirectorySnapshot } from "../lib/directory.ts";
 
-const { plugins } = directory;
+const retiredJson = path.join(process.cwd(), "lib", "directory.json");
+const sourceCatalogPath = path.join(process.cwd(), "catalog", "v2", "catalog.json");
 
 const REQUIRED_FIELDS = [
+  "id",
   "slug",
   "name",
   "summary",
@@ -16,7 +21,13 @@ const REQUIRED_FIELDS = [
   "license",
   "repository",
   "support",
+  "category",
+  "latestVersion",
+  "channel",
   "releaseUrl",
+  "downloadUrl",
+  "fileName",
+  "sha256",
   "verifiedRelease",
   "verifiedAgainst",
   "verifiedOn",
@@ -30,8 +41,33 @@ const VALID_VERIFICATION = new Set(["verified", "pending-current-version", "with
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const errors = [];
+
+if (existsSync(retiredJson)) {
+  errors.push("lib/directory.json must be retired; directory entries are derived from the signed v2 catalog");
+}
+
+try {
+  const sourceBytes = readFileSync(sourceCatalogPath);
+  const sourceCheck = validateCatalogBytes(sourceBytes);
+  if (!sourceCheck.ok) {
+    for (const issue of sourceCheck.errors) {
+      errors.push(`catalog/v2/catalog.json (${issue.path}): ${issue.message}`);
+    }
+  }
+} catch (error) {
+  errors.push(`catalog/v2/catalog.json: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+let snapshot = null;
+try {
+  snapshot = loadDirectorySnapshot();
+} catch (error) {
+  errors.push(`public/api/v2: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+const plugins = snapshot?.plugins ?? [];
 const seenSlugs = new Set();
-const seenRepos = new Set();
+const seenIds = new Set();
 
 for (const [index, plugin] of plugins.entries()) {
   const where = `entry[${index}] (${plugin.slug ?? "?"})`;
@@ -53,6 +89,13 @@ for (const [index, plugin] of plugins.entries()) {
     seenSlugs.add(plugin.slug);
   }
 
+  if (plugin.id !== undefined) {
+    if (seenIds.has(plugin.id)) {
+      errors.push(`${where}: duplicate plugin id "${plugin.id}"`);
+    }
+    seenIds.add(plugin.id);
+  }
+
   if (plugin.trust !== undefined && !VALID_TRUST.has(plugin.trust)) {
     errors.push(`${where}: trust "${plugin.trust}" must be one of ${[...VALID_TRUST].join(", ")}`);
   }
@@ -63,20 +106,24 @@ for (const [index, plugin] of plugins.entries()) {
     );
   }
 
-  if (plugin.repository !== undefined) {
-    const normalized = plugin.repository.replace(/\/$/, "");
-    if (seenRepos.has(normalized)) {
-      errors.push(`${where}: duplicate repository "${normalized}"`);
-    }
-    seenRepos.add(normalized);
+  if (plugin.checksum !== undefined && !/^[0-9a-f]{64}$/.test(plugin.checksum)) {
+    errors.push(`${where}: checksum must be a lowercase 64-char hex SHA-256`);
   }
 
-  if (plugin.checksum !== undefined && !/^[0-9a-f]{64}$/i.test(plugin.checksum)) {
-    errors.push(`${where}: checksum must be a 64-char hex SHA-256`);
+  if (plugin.sha256 !== plugin.checksum) {
+    errors.push(`${where}: sha256 and checksum must match`);
   }
 
-  if (plugin.verifiedRelease !== undefined && !/^\d+\.\d+\.\d+/.test(plugin.verifiedRelease)) {
-    errors.push(`${where}: verifiedRelease "${plugin.verifiedRelease}" must be a semver`);
+  if (plugin.latestVersion !== undefined && !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(plugin.latestVersion)) {
+    errors.push(`${where}: latestVersion "${plugin.latestVersion}" must be a strict MAJOR.MINOR.PATCH version`);
+  }
+
+  if (plugin.requiresCubism && (!Array.isArray(plugin.cubismVersions) || plugin.cubismVersions.length === 0)) {
+    errors.push(`${where}: cubismVersions must be non-empty when requiresCubism is true`);
+  }
+
+  if (!plugin.requiresCubism && Array.isArray(plugin.cubismVersions) && plugin.cubismVersions.length > 0) {
+    errors.push(`${where}: cubismVersions must be empty when requiresCubism is false`);
   }
 
   if (plugin.tags !== undefined) {
@@ -96,4 +143,6 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-console.log(`Plugin directory OK: ${plugins.length} entr${plugins.length === 1 ? "y" : "ies"} validated.`);
+console.log(
+  `Plugin directory OK: generation ${snapshot.generationId} (catalogVersion ${snapshot.catalogVersion}), ${plugins.length} entr${plugins.length === 1 ? "y" : "ies"} validated.`,
+);

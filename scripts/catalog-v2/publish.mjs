@@ -46,6 +46,7 @@ import {
   validateCatalogBytes,
   verifyCatalogBytes,
 } from "../../lib/catalog-v2/catalog.mjs";
+import { writeGenerationReadmes } from "../../lib/catalog-v2/readme.mjs";
 import { POINTER_FILE, commitPointer, loadCurrentGeneration, nextGenerationId, stageGeneration } from "../../lib/catalog-v2/storage.mjs";
 
 const args = process.argv.slice(2);
@@ -261,6 +262,11 @@ if (!next.ok) {
 const staged = stageGeneration(outDir, next.id, Buffer.from(canonicalBytes, "utf8"), Buffer.from(envelopeBytes, "utf8"));
 if (!staged.ok) {
   fail("staging", staged.message);
+}
+try {
+  writeGenerationReadmes(staged.genDir, manifest);
+} catch (error) {
+  fail("readmes", `cannot extract or write generation READMEs: ${error instanceof Error ? error.message : String(error)}`);
 }
 const committed = commitPointer(outDir, next.id);
 if (!committed.ok) {

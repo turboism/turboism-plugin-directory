@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -13,8 +14,11 @@ import {
 import { filterPlugins } from "../../lib/directory-view.mjs";
 import { validateCatalogBytes } from "../../lib/catalog-v2/catalog.mjs";
 
-test("extractJarReadmes extracts en, ja, and zh READMEs with SHA-256 from live jar", () => {
-  const result = extractJarReadmes("/tmp/vr/history-panel-0.67.0.jar");
+const LIVE_README_JAR = "/tmp/vr/history-panel-0.67.0.jar";
+
+// Uses a locally downloaded official jar when present; CI has no such fixture.
+test("extractJarReadmes extracts en, ja, and zh READMEs with SHA-256 from live jar", { skip: !existsSync(LIVE_README_JAR) }, () => {
+  const result = extractJarReadmes(LIVE_README_JAR);
   assert.ok(result.en, "en README must exist");
   assert.ok(result.ja, "ja README must exist");
   assert.ok(result.zh, "zh README must exist");

@@ -346,7 +346,7 @@
         "description": "Catalog cache policy",
         "schema": {
           "type": "string",
-          "example": "public, max-age=300, stale-while-revalidate=86400"
+          "example": "public, max-age=60, stale-while-revalidate=86400"
         }
       },
       "SearchCacheControl": {

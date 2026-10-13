@@ -77,6 +77,7 @@ test("catalog endpoint serves exact identity bytes with v2 media type, ETag, and
     const body = Buffer.from(await response.arrayBuffer());
     assert.ok(body.equals(deployed.catalogBytes));
     assert.equal(response.headers.get("content-type"), CATALOG_CONTENT_TYPE);
+    assert.equal(CATALOG_CACHE_CONTROL, "public, max-age=60, stale-while-revalidate=86400");
     assert.equal(response.headers.get("cache-control"), CATALOG_CACHE_CONTROL);
     assert.equal(response.headers.get("etag"), `"${createHash("sha256").update(deployed.catalogBytes).digest("hex")}"`);
     assert.equal(response.headers.get("access-control-allow-origin"), "*");

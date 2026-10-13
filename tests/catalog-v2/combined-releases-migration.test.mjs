@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import http from "node:http";
+import { execFileSync } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import {
@@ -603,4 +604,110 @@ test("pollProductionLive resolves when expected catalogVersion appears and times
     server.close();
     await once(server, "close");
   }
+});
+
+test("migration workflow YAML parses cleanly and validates structure", () => {
+  const workflowPath = path.join(process.cwd(), ".github", "workflows", "migrate-combined-release.yml");
+  const content = readFileSync(workflowPath, "utf8");
+
+  // Validate YAML parsing via python3 pyyaml
+  const pyScript = `
+import yaml, sys
+with open(sys.argv[1]) as f:
+    data = yaml.safe_load(f)
+assert data['name'] == 'Migrate combined plugin release'
+assert data['concurrency']['group'] == 'publish-plugin-directory-v2'
+assert data['concurrency']['cancel-in-progress'] is False
+on_key = True if True in data else 'on'
+inputs = data[on_key]['workflow_dispatch']['inputs']
+assert 'version' in inputs and inputs['version']['default'] == '0.67.0'
+assert 'target_tag' in inputs and inputs['target_tag']['default'] == 'plugins-0.67.0'
+assert 'dry_run' in inputs and inputs['dry_run']['default'] is True
+assert data['permissions'] == {'contents': 'write'}
+steps = data['jobs']['migrate']['steps']
+assert len(steps) >= 14
+print('YAML validation passed')
+`;
+  const result = execFileSync("python3", ["-c", pyScript, workflowPath], { encoding: "utf8" });
+  assert.match(result, /YAML validation passed/);
+});
+
+test("migration workflow static assertions: trigger, concurrency, single-step key lifetime, dry-run safety", () => {
+  const workflowPath = path.join(process.cwd(), ".github", "workflows", "migrate-combined-release.yml");
+  const workflow = readFileSync(workflowPath, "utf8");
+
+  // Step blocks: each "- name:" line until next at same indent
+  const stepBlocks = workflow
+    .split("\n      - name: ")
+    .slice(1)
+    .map((chunk) => {
+      const [name, ...bodyLines] = chunk.split("\n");
+      return { name, body: bodyLines.join("\n") };
+    });
+
+  assert.ok(stepBlocks.length >= 14, "expected full step list");
+
+  // Trigger: workflow_dispatch ONLY
+  const onBlock = workflow.match(/^on:\n((?:[ \t]+\S[^\n]*\n?)*)/m);
+  assert.ok(onBlock, "on: trigger block must be present");
+  assert.match(onBlock[1], /workflow_dispatch:/);
+  assert.doesNotMatch(onBlock[1], /(^|\n)\s*(pull_request|push|schedule):/);
+
+  // Concurrency group shared with publish-plugin-directory-v2
+  assert.match(workflow, /concurrency:\n\s+group:\s*publish-plugin-directory-v2/);
+  assert.match(workflow, /cancel-in-progress:\s*false/);
+
+  // Environment and permissions
+  assert.match(workflow, /environment:\s*catalog-signing/);
+  const permissions = workflow.match(/permissions:\n((?:[ \t]+\S[^\n]*\n)+)/);
+  assert.ok(permissions, "permissions block must be present");
+  assert.deepEqual(
+    permissions[1].trim().split("\n").map((l) => l.trim()),
+    ["contents: write"],
+  );
+
+  // Action pins
+  const uses = [...workflow.matchAll(/^\s*uses:\s*(\S+)/gm)].map((m) => m[1]);
+  assert.deepEqual(uses, [
+    "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+    "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+  ]);
+
+  // Main branch guard
+  assert.match(workflow, /github\.ref\s*!=\s*'refs\/heads\/main'/);
+
+  // Single-step secret lifetime
+  const publishBlock = stepBlocks.find((s) => s.name === "Publish the catalog/signature pair");
+  assert.ok(publishBlock, "publish step must exist");
+  assert.equal(
+    (workflow.match(/secrets\.PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/g) || []).length,
+    1,
+    "signing secret referenced exactly once",
+  );
+  assert.match(publishBlock.body, /umask 077/);
+  assert.match(publishBlock.body, /trap cleanup EXIT/);
+
+  for (const step of stepBlocks) {
+    if (step === publishBlock) continue;
+    assert.doesNotMatch(step.body, /KEY_FILE|PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM/);
+  }
+
+  // Live only steps guard
+  for (const liveStepName of [
+    "Verify only the allowed paths changed",
+    "Check diff hygiene",
+    "Scan for private-key markers",
+    "Commit the generated pair and push to main",
+    "Poll production for new catalogVersion",
+    "Verify production deployment",
+  ]) {
+    const step = stepBlocks.find((s) => s.name === liveStepName);
+    assert.ok(step, `step "${liveStepName}" must exist`);
+    assert.match(step.body, /inputs\.dry_run\s*==\s*false/, `step "${liveStepName}" must be guarded with dry_run == false`);
+  }
+
+  // Never delete releases inside workflow
+  assert.doesNotMatch(workflow, /release delete|--cleanup-tag/, "workflow must not delete releases");
+  // Non-force push only
+  assert.doesNotMatch(workflow, /git push[^\n]*(--force|\s-f(\s|$))/);
 });

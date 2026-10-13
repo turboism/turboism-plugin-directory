@@ -1,0 +1,324 @@
+# Workflow for migrating individual per-plugin GitHub Releases (plugin-<module>-v<version>)
+# to one combined GitHub Release (plugins-<version>) with zero downtime.
+#
+# Modes:
+# - dry_run: true (default): verifies the live current generation, downloads and
+#   verifies old Release JARs, plans the combined release without mutating GitHub
+#   Releases, runs URL migration and staged generation signing in a temp dir,
+#   prints the planned catalog diff, and performs no git push or release mutation.
+# - dry_run: false: creates/resumes the combined Release plugins-<version>,
+#   uploads missing JARs with byte-identity verification (anonymous re-download),
+#   updates catalog/v2/catalog.json (catalogVersion + 1), asserts that ONLY
+#   release and artifact URLs changed, signs and stages generation 3 with
+#   generation-bound README extraction, pushes to main, triggers the Vercel
+#   deploy hook if configured, polls production until the new catalogVersion
+#   is live, and runs verify-production against deployed assets.
+#
+# Security posture:
+# - workflow_dispatch ONLY, guarded to refs/heads/main; never PR/push/schedule.
+# - Runs in the catalog-signing environment; the Ed25519 private key exists
+#   only as the PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM environment secret.
+# - The key is materialized and consumed INSIDE ONE secret-scoped step: umask
+#   077, written to $RUNNER_TEMP only, cleanup trap installed BEFORE the
+#   write, publisher invoked in the same step, trap cleanup on that step's
+#   exit. No later step references the key or the secret.
+# - contents: write is the ONLY permission; shared concurrency group
+#   publish-plugin-directory-v2 ensures this lane never runs concurrently with
+#   the catalog publisher.
+# - Optional secret VERCEL_DEPLOY_HOOK_URL triggers a Vercel production
+#   deployment immediately after the push to main.
+# - Old Releases are NOT deleted in this workflow; deletion is a separate,
+#   explicit supervisor step documented in docs/runbooks/migrate-to-combined-releases.md.
+name: Migrate combined plugin release
+run-name: Migrate combined release · ${{ inputs.target_tag }} (dry_run=${{ inputs.dry_run }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Plugin release version to migrate"
+        required: true
+        type: string
+        default: "0.67.0"
+      target_tag:
+        description: "Target combined release tag"
+        required: true
+        type: string
+        default: "plugins-0.67.0"
+      dry_run:
+        description: "Dry run mode (verify and plan only, no release mutation or push)"
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: publish-plugin-directory-v2
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    name: Migrate combined release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: catalog-signing
+    steps:
+      - name: Check out main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+
+      - name: Reject non-main invocations
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "workflow_dispatch is only valid on refs/heads/main"
+          exit 1
+
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate dispatch inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "version must match strict semver (e.g. 0.67.0)"
+            exit 1
+          fi
+          if ! printf '%s' "$TARGET_TAG" | grep -Eq '^[A-Za-z0-9_.-]{1,128}$'; then
+            echo "target_tag must match ^[A-Za-z0-9_.-]{1,128}$"
+            exit 1
+          fi
+          if [ "$DRY_RUN" != "true" ] && [ "$DRY_RUN" != "false" ]; then
+            echo "dry_run must be true or false"
+            exit 1
+          fi
+          echo "dispatch inputs valid: version=$VERSION, target_tag=$TARGET_TAG, dry_run=$DRY_RUN"
+
+      - name: Run repository gates
+        run: |
+          set -euo pipefail
+          npm run release:check
+          npm run build
+
+      - name: Verify live current generation
+        run: |
+          set -euo pipefail
+          test -f public/api/v2/current
+          CURRENT_GEN="$(cat public/api/v2/current)"
+          echo "verifying current generation $CURRENT_GEN against trusted allowlist..."
+          node scripts/catalog-v2/verify.mjs \
+            --catalog "public/api/v2/generations/$CURRENT_GEN/catalog.json" \
+            --sig "public/api/v2/generations/$CURRENT_GEN/catalog.json.sig" \
+            --keys lib/catalog-v2/trusted-keys.json \
+            --require-production
+          node scripts/catalog-v2/verify.mjs \
+            --catalog catalog/v2/catalog.json
+
+      - name: Download and verify old Release JARs
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/market-jars"
+          node scripts/catalog-v2/migrate-combined-release.mjs download-and-verify \
+            --catalog catalog/v2/catalog.json \
+            --version "$VERSION" \
+            --target-tag "$TARGET_TAG" \
+            --dir "$RUNNER_TEMP/market-jars" \
+            --manifest-out "$RUNNER_TEMP/market-jars/jars.json"
+
+      - name: Create or resume combined Release
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          extra_args=""
+          if [ "$DRY_RUN" = "true" ]; then
+            extra_args="--dry-run"
+          fi
+          node scripts/catalog-v2/migrate-combined-release.mjs sync-combined-release \
+            --catalog catalog/v2/catalog.json \
+            --version "$VERSION" \
+            --target-tag "$TARGET_TAG" \
+            --jars "$RUNNER_TEMP/market-jars/jars.json" \
+            $extra_args
+
+      - name: Publish the catalog/signature pair
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM: ${{ secrets.PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY_FILE="$RUNNER_TEMP/plugin-catalog-signing-key.pem"
+          cleanup() { rm -f "$KEY_FILE"; }
+          trap cleanup EXIT
+          printf '%s\n' "$PLUGIN_CATALOG_ED25519_PRIVATE_KEY_PEM" > "$KEY_FILE"
+          test -s "$KEY_FILE"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "--- DRY RUN PUBLISH ---"
+            TMP_CATALOG="$RUNNER_TEMP/migrated-catalog.json"
+            TMP_PUBLIC="$RUNNER_TEMP/public-api/v2"
+            cp catalog/v2/catalog.json "$TMP_CATALOG"
+            mkdir -p "$RUNNER_TEMP/public-api"
+            cp -r public/api/v2 "$TMP_PUBLIC"
+
+            node scripts/catalog-v2/ingest-official-release.mjs migrate-artifact-urls \
+              --catalog "$TMP_CATALOG" \
+              --target-tag "$TARGET_TAG" \
+              --version "$VERSION"
+
+            node scripts/catalog-v2/migrate-combined-release.mjs assert-diff \
+              --before catalog/v2/catalog.json \
+              --after "$TMP_CATALOG" \
+              --version "$VERSION" \
+              --target-tag "$TARGET_TAG"
+
+            echo "Planned catalog diff:"
+            git diff --no-index catalog/v2/catalog.json "$TMP_CATALOG" || true
+
+            node scripts/catalog-v2/publish.mjs \
+              --catalog "$TMP_CATALOG" \
+              --jars "$RUNNER_TEMP/market-jars/jars.json" \
+              --key "$KEY_FILE" \
+              --key-id turboism-official-v1 \
+              --keys lib/catalog-v2/trusted-keys.json \
+              --out "$TMP_PUBLIC"
+
+            NEW_GEN="$(cat "$TMP_PUBLIC/current")"
+            node scripts/catalog-v2/verify.mjs \
+              --catalog "$TMP_PUBLIC/generations/$NEW_GEN/catalog.json" \
+              --sig "$TMP_PUBLIC/generations/$NEW_GEN/catalog.json.sig" \
+              --keys lib/catalog-v2/trusted-keys.json \
+              --require-production
+
+            echo "dry-run publish verified in temp dir; generation $NEW_GEN staged and signed successfully"
+          else
+            echo "--- LIVE PUBLISH ---"
+            PRE_CATALOG="$RUNNER_TEMP/pre-migrate-catalog.json"
+            cp catalog/v2/catalog.json "$PRE_CATALOG"
+
+            node scripts/catalog-v2/ingest-official-release.mjs migrate-artifact-urls \
+              --catalog catalog/v2/catalog.json \
+              --target-tag "$TARGET_TAG" \
+              --version "$VERSION"
+
+            node scripts/catalog-v2/migrate-combined-release.mjs assert-diff \
+              --before "$PRE_CATALOG" \
+              --after catalog/v2/catalog.json \
+              --version "$VERSION" \
+              --target-tag "$TARGET_TAG"
+
+            node scripts/catalog-v2/publish.mjs \
+              --catalog catalog/v2/catalog.json \
+              --jars "$RUNNER_TEMP/market-jars/jars.json" \
+              --key "$KEY_FILE" \
+              --key-id turboism-official-v1 \
+              --keys lib/catalog-v2/trusted-keys.json \
+              --out public/api/v2
+          fi
+
+      - name: Verify only the allowed paths changed
+        if: inputs.dry_run == false
+        run: |
+          set -euo pipefail
+          status="$(git status --porcelain --untracked-files=all)"
+          if [ -n "$status" ]; then
+            bad="$(printf '%s\n' "$status" | grep -v -e '^.. public/api/v2/' -e '^.. catalog/v2/catalog.json$' || true)"
+            if [ -n "$bad" ]; then
+              printf '%s\n' "$bad"
+              echo "working tree changed outside public/api/v2/ and catalog/v2/catalog.json"
+              exit 1
+            fi
+          fi
+          echo "working tree changed only under public/api/v2/ and catalog/v2/catalog.json"
+
+      - name: Check diff hygiene
+        if: inputs.dry_run == false
+        run: git diff --check
+
+      - name: Scan for private-key markers
+        if: inputs.dry_run == false
+        run: |
+          set -euo pipefail
+          marker='PRIVAT''E KEY'
+          hits="$(grep -rI -n \
+            --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.next \
+            --exclude='*.md' --exclude-dir=tests \
+            -e "$marker" . || true)"
+          if [ -n "$hits" ]; then
+            printf '%s\n' "$hits"
+            echo "private-key marker found outside Markdown/test fixtures"
+            exit 1
+          fi
+          echo "private-key marker scan clean"
+
+      - name: Commit the generated pair and push to main
+        if: inputs.dry_run == false
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet && [ -z "$(git status --porcelain --untracked-files=all)" ]; then
+            echo "catalog pair is already current; nothing to commit"
+            exit 0
+          fi
+          git add public/api/v2 catalog/v2/catalog.json
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "chore(catalog-v2): migrate $VERSION releases to combined release $TARGET_TAG"
+          git push origin HEAD:refs/heads/main
+          if [ -n "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            case "$VERCEL_DEPLOY_HOOK_URL" in
+              https://api.vercel.com/v1/integrations/deploy/*)
+                curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL" >/dev/null
+                echo "triggered Vercel production deploy hook"
+                ;;
+              *)
+                echo "VERCEL_DEPLOY_HOOK_URL must start with https://api.vercel.com/v1/integrations/deploy/"
+                exit 1
+                ;;
+            esac
+          else
+            echo "VERCEL_DEPLOY_HOOK_URL is not set; relying on Vercel GitHub App push deployment"
+          fi
+
+      - name: Poll production for new catalogVersion
+        if: inputs.dry_run == false
+        run: |
+          set -euo pipefail
+          NEW_CATALOG_VERSION="$(node -e 'const cat = JSON.parse(require("node:fs").readFileSync("catalog/v2/catalog.json")); console.log(cat.catalogVersion);')"
+          node scripts/catalog-v2/migrate-combined-release.mjs poll-production \
+            --expected-version "$NEW_CATALOG_VERSION" \
+            --base-url https://plugin.turboism.dev \
+            --timeout-seconds 300 \
+            --interval-seconds 10
+
+      - name: Verify production deployment
+        if: inputs.dry_run == false
+        run: |
+          set -euo pipefail
+          node scripts/catalog-v2/ingest-official-release.mjs verify-production \
+            --base-url https://plugin.turboism.dev \
+            --keys lib/catalog-v2/trusted-keys.json

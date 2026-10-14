@@ -147,8 +147,8 @@ test("migrate-artifact-urls repoints matching releases to combined release and b
   }
 });
 
-test("buildMigrationPlan builds canonical plan and markdown body", () => {
-  const rootCatalog = JSON.parse(readFileSync(path.join(process.cwd(), "catalog", "v2", "catalog.json"), "utf8"));
+test("buildMigrationPlan builds canonical plan and markdown body from the immutable pre-migration snapshot", () => {
+  const rootCatalog = JSON.parse(readFileSync(path.join(process.cwd(), "public", "api", "v2", "generations", "00000002", "catalog.json"), "utf8"));
   const plan = buildMigrationPlan(rootCatalog, { version: "0.67.0", targetTag: "plugins-0.67.0" });
   assert.equal(plan.targetTag, "plugins-0.67.0");
   assert.equal(plan.title, "Turboism plugins · 0.67.0");
@@ -165,6 +165,18 @@ test("buildMigrationPlan builds canonical plan and markdown body", () => {
     first.newArtifactUrl,
     "https://github.com/turboism/turboism-plugin-directory/releases/download/plugins-0.67.0/acp-0.67.0.jar",
   );
+
+  // Re-running after publication must produce no further migration work.
+  const migrated = structuredClone(rootCatalog);
+  for (const plugin of migrated.plugins) {
+    for (const release of plugin.releases) {
+      if (release.version === "0.67.0") {
+        release.releaseUrl = "https://github.com/turboism/turboism-plugin-directory/releases/tag/plugins-0.67.0";
+        release.artifact.url = `https://github.com/turboism/turboism-plugin-directory/releases/download/plugins-0.67.0/${release.artifact.fileName}`;
+      }
+    }
+  }
+  assert.equal(buildMigrationPlan(migrated, { version: "0.67.0", targetTag: "plugins-0.67.0" }).releases.length, 0);
 });
 
 test("assertUrlOnlyDiff passes on valid URL migration and rejects non-URL changes", () => {

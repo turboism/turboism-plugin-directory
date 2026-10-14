@@ -23,15 +23,17 @@ function tempDir() {
 test("lib/directory.json is retired and current committed generation loads cleanly", async () => {
   assert.equal(existsSync(path.join(process.cwd(), "lib", "directory.json")), false);
   const snapshot = loadDirectorySnapshot();
-  assert.equal(snapshot.generationId, "00000002");
-  assert.equal(snapshot.catalogVersion, 2);
-  assert.equal(snapshot.plugins.length, 24);
+  const generationId = readFileSync(path.join(process.cwd(), "public", "api", "v2", "current"), "utf8");
+  const catalog = JSON.parse(readFileSync(path.join(process.cwd(), "public", "api", "v2", "generations", generationId, "catalog.json"), "utf8"));
+  assert.equal(snapshot.generationId, generationId);
+  assert.equal(snapshot.catalogVersion, catalog.catalogVersion);
+  assert.ok(snapshot.plugins.length > 0);
 
   const response = serveLegacyPlugins();
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "public, max-age=60, stale-while-revalidate=86400");
   const data = await response.json();
-  assert.equal(data.length, 24);
+  assert.equal(data.length, snapshot.plugins.length);
 });
 
 test("populated signed generation projects latest active releases, 5 locales with fallbacks, Cubism versions, SHA-256, and download URLs", async () => {

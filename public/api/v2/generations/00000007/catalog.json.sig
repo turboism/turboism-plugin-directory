@@ -1,0 +1,1 @@
+{"format":"turboism.plugin.catalog.signature","schemaVersion":2,"algorithm":"Ed25519","keyId":"turboism-official-v1","catalogSha256":"ee36f477226ea528a97c42643c9e00a4f573ab54b50d9b88f1b2799b84f82b5d","signature":"SiP3Bj0ElQHgiIMZ4oTpdymWJnJ04tOLLR0F/TF8oIG/zHmEw7HktE6hQxPnfXlGRcl2iI5OS1KGs52TVCvIAw=="}

@@ -1,0 +1,2347 @@
+{
+  "format": "turboism.plugin.readmes",
+  "schemaVersion": 1,
+  "generationId": "00000009",
+  "plugins": {
+    "dev.turboism.plugin.acp@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.0/README.md",
+        "sha256": "9668584ff74aaf6c4f81b98893e2545040dfa8a1190855dc59842c8168e53a00",
+        "size": 6352
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.0/README_ja.md",
+        "sha256": "750fc73c1f558f5bed2bc5467b3b422889bd72c095f994c6610f3b1b214db301",
+        "size": 8604
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.0/README_zh.md",
+        "sha256": "49f2e862f6dbff6916d4c5867fbbe05ac3a19c8e99afa42ccfd95b113368843f",
+        "size": 5803
+      }
+    },
+    "dev.turboism.plugin.acp@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.1/README.md",
+        "sha256": "9668584ff74aaf6c4f81b98893e2545040dfa8a1190855dc59842c8168e53a00",
+        "size": 6352
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.1/README_ja.md",
+        "sha256": "750fc73c1f558f5bed2bc5467b3b422889bd72c095f994c6610f3b1b214db301",
+        "size": 8604
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.1/README_zh.md",
+        "sha256": "49f2e862f6dbff6916d4c5867fbbe05ac3a19c8e99afa42ccfd95b113368843f",
+        "size": 5803
+      }
+    },
+    "dev.turboism.plugin.acp@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.2/README.md",
+        "sha256": "9668584ff74aaf6c4f81b98893e2545040dfa8a1190855dc59842c8168e53a00",
+        "size": 6352
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.2/README_ja.md",
+        "sha256": "750fc73c1f558f5bed2bc5467b3b422889bd72c095f994c6610f3b1b214db301",
+        "size": 8604
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.2/README_zh.md",
+        "sha256": "e9f6063c9dc1fd58fe61393cd31062ea07d57c155c11de6cea933c5484e0aeb0",
+        "size": 6257
+      }
+    },
+    "dev.turboism.plugin.acp@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.3/README.md",
+        "sha256": "58c2e38b5988e44bf9fa29a9d2cbab8b3fcf25bd0e1a176aabc8d973149649eb",
+        "size": 9799
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.3/README_ja.md",
+        "sha256": "18d57edb6bd4d12c6c63a7bc1b99a7c70c34168abd2639cd8ee718b790aabc1d",
+        "size": 12370
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.3/README_zh.md",
+        "sha256": "f680cd35b9f11acaef0e0f9b1936d8f34d8ed75d587bad14b6b68beebd3d7689",
+        "size": 9384
+      }
+    },
+    "dev.turboism.plugin.acp@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.4/README.md",
+        "sha256": "8f3695cd182253f1bd3c0d0bfde91c356da37fb9ab12414801a1663c4c93541c",
+        "size": 9799
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.4/README_ja.md",
+        "sha256": "7d828eaf56ab199506fc05946439d059e49006f0ac0c9591c0297667949c6161",
+        "size": 12370
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.acp/0.67.4/README_zh.md",
+        "sha256": "bc6048fe68473036a39e04f9ca6407a08699c0d5326a18c3567c212a8178e402",
+        "size": 9384
+      }
+    },
+    "dev.turboism.plugin.boundingbox-warp-mirror@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.0/README.md",
+        "sha256": "c73c80368aca93ca28f9f9fce44c4ca40fd7f1b8d0a684dda3363dc6262419ac",
+        "size": 3987
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.0/README_ja.md",
+        "sha256": "67ecfffdd4fe40cfa179ae12e801c932e80f534c4ee9ecd73d97ad4f7ef9025f",
+        "size": 4985
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.0/README_zh.md",
+        "sha256": "fe9490e02a8d2ec5301f92d8b6e132086df5d6773fec36507601221f2c474ae5",
+        "size": 3813
+      }
+    },
+    "dev.turboism.plugin.boundingbox-warp-mirror@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.1/README.md",
+        "sha256": "c73c80368aca93ca28f9f9fce44c4ca40fd7f1b8d0a684dda3363dc6262419ac",
+        "size": 3987
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.1/README_ja.md",
+        "sha256": "67ecfffdd4fe40cfa179ae12e801c932e80f534c4ee9ecd73d97ad4f7ef9025f",
+        "size": 4985
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.1/README_zh.md",
+        "sha256": "fe9490e02a8d2ec5301f92d8b6e132086df5d6773fec36507601221f2c474ae5",
+        "size": 3813
+      }
+    },
+    "dev.turboism.plugin.boundingbox-warp-mirror@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.2/README.md",
+        "sha256": "c73c80368aca93ca28f9f9fce44c4ca40fd7f1b8d0a684dda3363dc6262419ac",
+        "size": 3987
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.2/README_ja.md",
+        "sha256": "67ecfffdd4fe40cfa179ae12e801c932e80f534c4ee9ecd73d97ad4f7ef9025f",
+        "size": 4985
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.2/README_zh.md",
+        "sha256": "a0965a21a12bef374414b59d2802cfea9a552af9d01071d897fc0bc07fa7d78e",
+        "size": 3813
+      }
+    },
+    "dev.turboism.plugin.boundingbox-warp-mirror@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.3/README.md",
+        "sha256": "8aa50e40f04c5e992b8acc9132c6b77b88558e08579fc248a96ac2a02b61759a",
+        "size": 3992
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.3/README_ja.md",
+        "sha256": "e141dab1ae6a7e610b3cf6c79324f441b2cd04b0ef983d332beb8c5bbc51e636",
+        "size": 4993
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.3/README_zh.md",
+        "sha256": "910b95776a741c5a7e1918064d55e7f9536d3e4337cc3176924daa67e2f39993",
+        "size": 3822
+      }
+    },
+    "dev.turboism.plugin.boundingbox-warp-mirror@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.4/README.md",
+        "sha256": "7dda6d22464032fa8a7d4c6b3e4918d787854365b919a77c00e84a65c90d4b38",
+        "size": 3992
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.4/README_ja.md",
+        "sha256": "8294f5b65c2d2a88b91c9af13aa115947dce136aa790f4f3a050bd72fe61b2d7",
+        "size": 4993
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.boundingbox-warp-mirror/0.67.4/README_zh.md",
+        "sha256": "694720fd7fcc8fdfa1160d1a7540af47938cb6fcb493f90fac28031fc2b3ad29",
+        "size": 3822
+      }
+    },
+    "dev.turboism.plugin.clipmask-viewer@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.0/README.md",
+        "sha256": "25b7270d01074db42edd2fd808ab0cabe77a85c68a8ecc9c3c924a813cc9c64f",
+        "size": 4881
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.0/README_ja.md",
+        "sha256": "cd99fffaf97d569567c677f787768d65b8b469c0849ad127f145608b4deec871",
+        "size": 6683
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.0/README_zh.md",
+        "sha256": "60fff4e198ce0eb7ea13a6363af7d43df8fa1f56ac0e61210b1f40272ff4d111",
+        "size": 4686
+      }
+    },
+    "dev.turboism.plugin.clipmask-viewer@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.1/README.md",
+        "sha256": "25b7270d01074db42edd2fd808ab0cabe77a85c68a8ecc9c3c924a813cc9c64f",
+        "size": 4881
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.1/README_ja.md",
+        "sha256": "cd99fffaf97d569567c677f787768d65b8b469c0849ad127f145608b4deec871",
+        "size": 6683
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.1/README_zh.md",
+        "sha256": "60fff4e198ce0eb7ea13a6363af7d43df8fa1f56ac0e61210b1f40272ff4d111",
+        "size": 4686
+      }
+    },
+    "dev.turboism.plugin.clipmask-viewer@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.2/README.md",
+        "sha256": "25b7270d01074db42edd2fd808ab0cabe77a85c68a8ecc9c3c924a813cc9c64f",
+        "size": 4881
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.2/README_ja.md",
+        "sha256": "cd99fffaf97d569567c677f787768d65b8b469c0849ad127f145608b4deec871",
+        "size": 6683
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.2/README_zh.md",
+        "sha256": "60fff4e198ce0eb7ea13a6363af7d43df8fa1f56ac0e61210b1f40272ff4d111",
+        "size": 4686
+      }
+    },
+    "dev.turboism.plugin.clipmask-viewer@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.3/README.md",
+        "sha256": "4cdf22f5518c3c97493fe51c7dc3012bffe70faaa444123a45d0da57a1cd3afd",
+        "size": 4849
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.3/README_ja.md",
+        "sha256": "7246cfb1b3b804e58f24fc62487e9e7edc9698ebd497602ef92421858eb7669a",
+        "size": 6652
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.3/README_zh.md",
+        "sha256": "72ce9d7cbb240b989e41da775fc468c51b97e6440d3100877cb82e78365bef15",
+        "size": 4655
+      }
+    },
+    "dev.turboism.plugin.clipmask-viewer@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.4/README.md",
+        "sha256": "b7d4fc52c5825dae940f14b27daf26bccfdf7f55097f608e59a737d183ac5863",
+        "size": 4849
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.4/README_ja.md",
+        "sha256": "3622400ac2c6fb93ff82a529089862b4f008608ad9e8e62fe521b54d9e501fe8",
+        "size": 6652
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.clipmask-viewer/0.67.4/README_zh.md",
+        "sha256": "6b607bb9a172ac9a0d10ae14d4b2b976261d4658a5c1345c59af5ed70934d17d",
+        "size": 4655
+      }
+    },
+    "dev.turboism.plugin.command-palette@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.0/README.md",
+        "sha256": "3017c71970f742487cd3f984b3ef7047878f079c397197767e688cc0df368fd2",
+        "size": 6311
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.0/README_ja.md",
+        "sha256": "a8baf1b206c5637a98e588544edffe52cd6d1f4beec7381401097afa24ad2b20",
+        "size": 7455
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.0/README_zh.md",
+        "sha256": "07122c47610bb63200cf8d0259374573848b5ad410ad43f30fdd441841b7ca18",
+        "size": 5601
+      }
+    },
+    "dev.turboism.plugin.command-palette@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.1/README.md",
+        "sha256": "3017c71970f742487cd3f984b3ef7047878f079c397197767e688cc0df368fd2",
+        "size": 6311
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.1/README_ja.md",
+        "sha256": "a8baf1b206c5637a98e588544edffe52cd6d1f4beec7381401097afa24ad2b20",
+        "size": 7455
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.1/README_zh.md",
+        "sha256": "07122c47610bb63200cf8d0259374573848b5ad410ad43f30fdd441841b7ca18",
+        "size": 5601
+      }
+    },
+    "dev.turboism.plugin.command-palette@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.2/README.md",
+        "sha256": "3017c71970f742487cd3f984b3ef7047878f079c397197767e688cc0df368fd2",
+        "size": 6311
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.2/README_ja.md",
+        "sha256": "a8baf1b206c5637a98e588544edffe52cd6d1f4beec7381401097afa24ad2b20",
+        "size": 7455
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.2/README_zh.md",
+        "sha256": "07122c47610bb63200cf8d0259374573848b5ad410ad43f30fdd441841b7ca18",
+        "size": 5601
+      }
+    },
+    "dev.turboism.plugin.command-palette@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.3/README.md",
+        "sha256": "b512096603729af50a63495b41f2be980cb64eaa09ada06f9d7bdacc7f6615ed",
+        "size": 6279
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.3/README_ja.md",
+        "sha256": "181c09eebc6f92ab2a2ef8d442f3f5c7a1e1501a47ab07e3daf7e76f3cadb664",
+        "size": 7424
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.3/README_zh.md",
+        "sha256": "21fb782210916b0e69574cd10b55dd3c5e4951ef74207676fd59e9daaa6baeae",
+        "size": 5570
+      }
+    },
+    "dev.turboism.plugin.command-palette@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.4/README.md",
+        "sha256": "1b7df2851f7f88d1188eb6cc50a6e66ce1285c7b813f4aa7ae6f0a339d02f9a0",
+        "size": 6279
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.4/README_ja.md",
+        "sha256": "1d303b9f117476fa7a63b8b21fce53fe8f8c6bb18d729ccc7c6840ec43701fe1",
+        "size": 7424
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.command-palette/0.67.4/README_zh.md",
+        "sha256": "93532b6327a1c92336f03bf67b2d6e367db0969c38c442856507efdedcffd5d4",
+        "size": 5570
+      }
+    },
+    "dev.turboism.plugin.cubism-tab-filter@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.0/README.md",
+        "sha256": "2e982be0f9dbd0610773ecf3567c45f1d06ee8616976837981fe9f4a490ac566",
+        "size": 3363
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.0/README_ja.md",
+        "sha256": "c6765224f919cc96bb025f045d213d437e05319745966d53b3c96f6966ef6093",
+        "size": 4754
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.0/README_zh.md",
+        "sha256": "85f502ab719d80dadf41495ea2afb7bfd9d460229b06107dc6f1a62da6958911",
+        "size": 3241
+      }
+    },
+    "dev.turboism.plugin.cubism-tab-filter@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.1/README.md",
+        "sha256": "2e982be0f9dbd0610773ecf3567c45f1d06ee8616976837981fe9f4a490ac566",
+        "size": 3363
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.1/README_ja.md",
+        "sha256": "c6765224f919cc96bb025f045d213d437e05319745966d53b3c96f6966ef6093",
+        "size": 4754
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.1/README_zh.md",
+        "sha256": "85f502ab719d80dadf41495ea2afb7bfd9d460229b06107dc6f1a62da6958911",
+        "size": 3241
+      }
+    },
+    "dev.turboism.plugin.cubism-tab-filter@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.2/README.md",
+        "sha256": "2e982be0f9dbd0610773ecf3567c45f1d06ee8616976837981fe9f4a490ac566",
+        "size": 3363
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.2/README_ja.md",
+        "sha256": "c6765224f919cc96bb025f045d213d437e05319745966d53b3c96f6966ef6093",
+        "size": 4754
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.2/README_zh.md",
+        "sha256": "f0cac1058569ac7c95755cc42d4586c5db8d9d60119e93792d9aece716b876f6",
+        "size": 3229
+      }
+    },
+    "dev.turboism.plugin.cubism-tab-filter@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.3/README.md",
+        "sha256": "9dede233418d415071c7ef1a9f12b11d0297c8a60aac517934576854b1d2b197",
+        "size": 3331
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.3/README_ja.md",
+        "sha256": "099a1d98541050d7712d4033d86e882c869d137dbd358dda5f6643faa501364a",
+        "size": 4723
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.3/README_zh.md",
+        "sha256": "18f6fc6f84c31bf4d588acc98559bca55df7878b6f8bc05a9170a221b6b9bd51",
+        "size": 3198
+      }
+    },
+    "dev.turboism.plugin.cubism-tab-filter@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.4/README.md",
+        "sha256": "ab56702a9c0c32d78b3b8fd92fb8bca165f9bdb532f26a766b30faa17e87541a",
+        "size": 3331
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.4/README_ja.md",
+        "sha256": "e9f4e0983078742908fa6d4dfd3dd1a215a7e820968c65294a3c1dd004b606b6",
+        "size": 4723
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.cubism-tab-filter/0.67.4/README_zh.md",
+        "sha256": "e8ca39c8c332aad2072e37ceee18630256704b0f57dc19d7321ba76d2415d2ea",
+        "size": 3198
+      }
+    },
+    "dev.turboism.plugin.external-psd-edit@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.0/README.md",
+        "sha256": "f39854d957931473c0a6103d3f96aabbc746e6ae42c176c0023aa0eff3134053",
+        "size": 8225
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.0/README_ja.md",
+        "sha256": "074d5a3545c4b71682105c1fe95898fc25ed5235a43954f9beb9aae6581e4ba6",
+        "size": 8927
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.0/README_zh.md",
+        "sha256": "14a1a77507c7fb0263bafa65531b35e245342ea6f82ff4230c63e3559cf44a14",
+        "size": 6526
+      }
+    },
+    "dev.turboism.plugin.external-psd-edit@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.1/README.md",
+        "sha256": "f39854d957931473c0a6103d3f96aabbc746e6ae42c176c0023aa0eff3134053",
+        "size": 8225
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.1/README_ja.md",
+        "sha256": "074d5a3545c4b71682105c1fe95898fc25ed5235a43954f9beb9aae6581e4ba6",
+        "size": 8927
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.1/README_zh.md",
+        "sha256": "14a1a77507c7fb0263bafa65531b35e245342ea6f82ff4230c63e3559cf44a14",
+        "size": 6526
+      }
+    },
+    "dev.turboism.plugin.external-psd-edit@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.2/README.md",
+        "sha256": "2a78a892b267af495935b1402a48036399fad39b038a3ea4ce8afe295f85c590",
+        "size": 8193
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.2/README_ja.md",
+        "sha256": "38a82c08c534ac5163f72f99b1b8d121f66c302efbae3c9cec9ccd69e10042cb",
+        "size": 8896
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.2/README_zh.md",
+        "sha256": "5e7e57ee9b63578c530a986bdc09251d55ec2a919aebb51ecb0f5236d1e09780",
+        "size": 6495
+      }
+    },
+    "dev.turboism.plugin.external-psd-edit@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.3/README.md",
+        "sha256": "9da9f94d85eed9e53e1a035d9895385336025641f57074a40d3af1fe96831dbf",
+        "size": 8193
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.3/README_ja.md",
+        "sha256": "dc6ec17983a7879849f2cb87f8b125204b56ede5abca40634cc96f8f4e12ccf5",
+        "size": 8896
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.external-psd-edit/0.67.3/README_zh.md",
+        "sha256": "311e0e116bd1339f335adac6441bfcfb3e34bec8645ee7bb11147cf3a35ddf7e",
+        "size": 6495
+      }
+    },
+    "dev.turboism.plugin.historypanel@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.0/README.md",
+        "sha256": "c1ac9a85edc2a461eb438860e0162239c2f7671fa61290e52ed5867703ce9f5e",
+        "size": 7423
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.0/README_ja.md",
+        "sha256": "f31e78adc3c8d39cb9e00c21ac933a3871a3bf399ae888c8b928df1c5368d282",
+        "size": 7548
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.0/README_zh.md",
+        "sha256": "c7c3f7255addc9b256486f910bb8a0f3b89f55225ca130ab62af7711beb5450c",
+        "size": 5324
+      }
+    },
+    "dev.turboism.plugin.historypanel@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.1/README.md",
+        "sha256": "c1ac9a85edc2a461eb438860e0162239c2f7671fa61290e52ed5867703ce9f5e",
+        "size": 7423
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.1/README_ja.md",
+        "sha256": "f31e78adc3c8d39cb9e00c21ac933a3871a3bf399ae888c8b928df1c5368d282",
+        "size": 7548
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.1/README_zh.md",
+        "sha256": "c7c3f7255addc9b256486f910bb8a0f3b89f55225ca130ab62af7711beb5450c",
+        "size": 5324
+      }
+    },
+    "dev.turboism.plugin.historypanel@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.2/README.md",
+        "sha256": "c1ac9a85edc2a461eb438860e0162239c2f7671fa61290e52ed5867703ce9f5e",
+        "size": 7423
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.2/README_ja.md",
+        "sha256": "f31e78adc3c8d39cb9e00c21ac933a3871a3bf399ae888c8b928df1c5368d282",
+        "size": 7548
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.2/README_zh.md",
+        "sha256": "c7c3f7255addc9b256486f910bb8a0f3b89f55225ca130ab62af7711beb5450c",
+        "size": 5324
+      }
+    },
+    "dev.turboism.plugin.historypanel@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.3/README.md",
+        "sha256": "e3b61d336f75e19d29c13af20c69586736adf33607957eefb7e7d951c7b0d849",
+        "size": 7391
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.3/README_ja.md",
+        "sha256": "6aaa5e1e89477d5a26623010812977a3691d50186124a449eb8cb5efe0aee322",
+        "size": 7517
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.3/README_zh.md",
+        "sha256": "6093f82947d278f58018017a4e7a46548c1396c65af75b9fb37c992927682105",
+        "size": 5293
+      }
+    },
+    "dev.turboism.plugin.historypanel@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.4/README.md",
+        "sha256": "f17965630f7531679e68fa25a0732417763fb246725aedb78c0c679672f5fe8f",
+        "size": 7391
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.4/README_ja.md",
+        "sha256": "e912244c70a035df32b101e175816077f248042fb9b058f352a3076d6278099d",
+        "size": 7517
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.historypanel/0.67.4/README_zh.md",
+        "sha256": "6656659465ca676fb3906ba45fe409c781796c223ad3c45ee817f7b4af866657",
+        "size": 5293
+      }
+    },
+    "dev.turboism.plugin.mcp@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.0/README.md",
+        "sha256": "ac22fbad2032d23c5513e4d905b38ed1e521a4a30fc808510c15b40f06b7f15f",
+        "size": 20343
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.0/README_ja.md",
+        "sha256": "39262e459a48b12810590420c96aeed872e2ff25242feb14862c2a292cd4db96",
+        "size": 25506
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.0/README_zh.md",
+        "sha256": "4c1e67861906cb221f41d35864beafc9077b0fbed0ab4934e7333c11e190c318",
+        "size": 17891
+      }
+    },
+    "dev.turboism.plugin.mcp@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.1/README.md",
+        "sha256": "ac22fbad2032d23c5513e4d905b38ed1e521a4a30fc808510c15b40f06b7f15f",
+        "size": 20343
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.1/README_ja.md",
+        "sha256": "39262e459a48b12810590420c96aeed872e2ff25242feb14862c2a292cd4db96",
+        "size": 25506
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.1/README_zh.md",
+        "sha256": "4c1e67861906cb221f41d35864beafc9077b0fbed0ab4934e7333c11e190c318",
+        "size": 17891
+      }
+    },
+    "dev.turboism.plugin.mcp@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.2/README.md",
+        "sha256": "ac22fbad2032d23c5513e4d905b38ed1e521a4a30fc808510c15b40f06b7f15f",
+        "size": 20343
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.2/README_ja.md",
+        "sha256": "39262e459a48b12810590420c96aeed872e2ff25242feb14862c2a292cd4db96",
+        "size": 25506
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.2/README_zh.md",
+        "sha256": "4c1e67861906cb221f41d35864beafc9077b0fbed0ab4934e7333c11e190c318",
+        "size": 17891
+      }
+    },
+    "dev.turboism.plugin.mcp@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.3/README.md",
+        "sha256": "ac22fbad2032d23c5513e4d905b38ed1e521a4a30fc808510c15b40f06b7f15f",
+        "size": 20343
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.3/README_ja.md",
+        "sha256": "39262e459a48b12810590420c96aeed872e2ff25242feb14862c2a292cd4db96",
+        "size": 25506
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.3/README_zh.md",
+        "sha256": "4c1e67861906cb221f41d35864beafc9077b0fbed0ab4934e7333c11e190c318",
+        "size": 17891
+      }
+    },
+    "dev.turboism.plugin.mcp@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.4/README.md",
+        "sha256": "4045a08fbf3a2075aa9a9ae3af2bf2588a028c42b7d12db5fcd7af3433322d10",
+        "size": 20311
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.4/README_ja.md",
+        "sha256": "eafc2d2f140b36bf762c51e50f777812cd04cbd2e799f0559f47aee9c475a86b",
+        "size": 25475
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.4/README_zh.md",
+        "sha256": "b010a0a3e7b910a1df02ca2e696eb9d6d325e0f958618fad3acc6ea61750938b",
+        "size": 17860
+      }
+    },
+    "dev.turboism.plugin.mcp@0.67.5": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.5/README.md",
+        "sha256": "ab4ad8e406c2881f6798d376e07578cc129dc29bd918c54860e3722fb1c66b85",
+        "size": 20311
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.5/README_ja.md",
+        "sha256": "45ba9f313301f1137dc12d39d57f80f6ec75878b7c0e0c3358ead8e919ebd8d3",
+        "size": 25475
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mcp/0.67.5/README_zh.md",
+        "sha256": "f8827c0d48cfd84a5803e1e88093633733c3fa12d01ec93cfd1838364fb6d8b3",
+        "size": 17860
+      }
+    },
+    "dev.turboism.plugin.mesh-edit-mirror-axis-enhance@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.0/README.md",
+        "sha256": "e91c00178ff5aea59fae193921cf30db3198a44bde3c578ae94e4fbfdbf3d196",
+        "size": 4873
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.0/README_ja.md",
+        "sha256": "9c02a6f0a1f718c9155e4d9ee7debd8c8c7a08e2aae4067c06ccd82cfbaf0063",
+        "size": 6803
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.0/README_zh.md",
+        "sha256": "62c2bbfb80a85ae34ba9f29639903f57976a5bd5fe3260f8c8f5029f5ec313d2",
+        "size": 4707
+      }
+    },
+    "dev.turboism.plugin.mesh-edit-mirror-axis-enhance@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.1/README.md",
+        "sha256": "e91c00178ff5aea59fae193921cf30db3198a44bde3c578ae94e4fbfdbf3d196",
+        "size": 4873
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.1/README_ja.md",
+        "sha256": "9c02a6f0a1f718c9155e4d9ee7debd8c8c7a08e2aae4067c06ccd82cfbaf0063",
+        "size": 6803
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.1/README_zh.md",
+        "sha256": "62c2bbfb80a85ae34ba9f29639903f57976a5bd5fe3260f8c8f5029f5ec313d2",
+        "size": 4707
+      }
+    },
+    "dev.turboism.plugin.mesh-edit-mirror-axis-enhance@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.2/README.md",
+        "sha256": "01168b4ea8144a83ca04e31237dcacf1e9f50ac39e4125d6e6376b728396b07d",
+        "size": 4841
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.2/README_ja.md",
+        "sha256": "1d387ac04c5a9542b353056f29a822ddfb98cd9cf6f49b241624874cf8cdeca0",
+        "size": 6772
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.2/README_zh.md",
+        "sha256": "b17eca6291cfd02d81868253a639a7bfc82a58090b3e2886dc81d255f4add507",
+        "size": 4676
+      }
+    },
+    "dev.turboism.plugin.mesh-edit-mirror-axis-enhance@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.3/README.md",
+        "sha256": "1b7d8c1435febe3390c901210fbe371c5bc442aad46868767991b24028b71824",
+        "size": 4841
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.3/README_ja.md",
+        "sha256": "e0daf041b76ca9e16c9905799a68af39673ac291e3dc93d427f45d3370600f06",
+        "size": 6772
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.mesh-edit-mirror-axis-enhance/0.67.3/README_zh.md",
+        "sha256": "7e6b6ccf30cbab6f6c936d02a6aafe5ff14555e7646e9f3d7848f9987646cb00",
+        "size": 4676
+      }
+    },
+    "dev.turboism.plugin.model-import-3d@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.0/README.md",
+        "sha256": "84877aadac1330e599e97f6931fe3c08962c7c3e3ea92f96bc3230d6fe73d714",
+        "size": 16801
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.0/README_ja.md",
+        "sha256": "3242489ad357719c308bd39a0e05f75fdc58eec2bcdb64b76a387075faedda5d",
+        "size": 6446
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.0/README_zh.md",
+        "sha256": "efd076f73dd278c86693c49d86aecade17e71565125637a46b2f60108a59b515",
+        "size": 4795
+      }
+    },
+    "dev.turboism.plugin.model-import-3d@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.1/README.md",
+        "sha256": "84877aadac1330e599e97f6931fe3c08962c7c3e3ea92f96bc3230d6fe73d714",
+        "size": 16801
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.1/README_ja.md",
+        "sha256": "3242489ad357719c308bd39a0e05f75fdc58eec2bcdb64b76a387075faedda5d",
+        "size": 6446
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.1/README_zh.md",
+        "sha256": "efd076f73dd278c86693c49d86aecade17e71565125637a46b2f60108a59b515",
+        "size": 4795
+      }
+    },
+    "dev.turboism.plugin.model-import-3d@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.2/README.md",
+        "sha256": "746116af81d5761f334503db1b02c4e4ad7f36724e0cf068e2487c8c2902edf9",
+        "size": 18763
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.2/README_ja.md",
+        "sha256": "5fa583ecd968980c9e6fb5480c58875dd17d02da726c3ecc803532acd0221c7e",
+        "size": 6472
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.2/README_zh.md",
+        "sha256": "efd076f73dd278c86693c49d86aecade17e71565125637a46b2f60108a59b515",
+        "size": 4795
+      }
+    },
+    "dev.turboism.plugin.model-import-3d@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.3/README.md",
+        "sha256": "780ee5378b91630bb2e37b75aca1334327102f961f1fb3d464c81314a999fec6",
+        "size": 25444
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.3/README_ja.md",
+        "sha256": "5fa583ecd968980c9e6fb5480c58875dd17d02da726c3ecc803532acd0221c7e",
+        "size": 6472
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.3/README_zh.md",
+        "sha256": "efd076f73dd278c86693c49d86aecade17e71565125637a46b2f60108a59b515",
+        "size": 4795
+      }
+    },
+    "dev.turboism.plugin.model-import-3d@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.4/README.md",
+        "sha256": "9ff7fafa2ae180c311b919aff7be0910f1ffef990bec033271ae5c13c5ea4837",
+        "size": 25447
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.4/README_ja.md",
+        "sha256": "8b77bebdfb40a18d9695087fe849cc3e043b5d230d6cb59df43241778417062c",
+        "size": 6476
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.4/README_zh.md",
+        "sha256": "29f80fc94211dee3386f3575f6ff118d152293a6d2f161e2cb4139483296d928",
+        "size": 4799
+      }
+    },
+    "dev.turboism.plugin.model-import-3d@0.67.5": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.5/README.md",
+        "sha256": "0c7c3be6adad944f859f2a49b5886ced815b9dea35e656218a4cdbc7f981fd37",
+        "size": 25447
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.5/README_ja.md",
+        "sha256": "5b380f3919025e2ddb5df73b1b0abfe1f3e39e3479289bcdf6336375d8263c1f",
+        "size": 6476
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.model-import-3d/0.67.5/README_zh.md",
+        "sha256": "8a5d0cced0389a878d09590001fcd64456fa256d4fc7ce30c748c75b141d9405",
+        "size": 4799
+      }
+    },
+    "dev.turboism.plugin.palette-label-style@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.0/README.md",
+        "sha256": "46fd29e6b3f606c60fc61a7eaacb2f5ecbcb63817d75ce428534f15235da9cc1",
+        "size": 5648
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.0/README_ja.md",
+        "sha256": "38e4eed7f85643c2d26a0dd4ad07516dc6f7e50f2407788fa95446fd0ca6ed79",
+        "size": 8060
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.0/README_zh.md",
+        "sha256": "d65cf9fe6ec6deaac8c520ca43e641d17319651d5f3483a6f4c8c9c6e262e783",
+        "size": 5559
+      }
+    },
+    "dev.turboism.plugin.palette-label-style@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.1/README.md",
+        "sha256": "46fd29e6b3f606c60fc61a7eaacb2f5ecbcb63817d75ce428534f15235da9cc1",
+        "size": 5648
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.1/README_ja.md",
+        "sha256": "38e4eed7f85643c2d26a0dd4ad07516dc6f7e50f2407788fa95446fd0ca6ed79",
+        "size": 8060
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.1/README_zh.md",
+        "sha256": "d65cf9fe6ec6deaac8c520ca43e641d17319651d5f3483a6f4c8c9c6e262e783",
+        "size": 5559
+      }
+    },
+    "dev.turboism.plugin.palette-label-style@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.2/README.md",
+        "sha256": "46fd29e6b3f606c60fc61a7eaacb2f5ecbcb63817d75ce428534f15235da9cc1",
+        "size": 5648
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.2/README_ja.md",
+        "sha256": "38e4eed7f85643c2d26a0dd4ad07516dc6f7e50f2407788fa95446fd0ca6ed79",
+        "size": 8060
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.2/README_zh.md",
+        "sha256": "ca3d6b704739cadbe0f4d2ae4b5fd14f8ff0ef0ba2f465c0261e5de2a927f4c2",
+        "size": 5520
+      }
+    },
+    "dev.turboism.plugin.palette-label-style@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.3/README.md",
+        "sha256": "7f89329bf1917e1019cb6535982cd810137302bb867028b2aecd58873f05c1ca",
+        "size": 5616
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.3/README_ja.md",
+        "sha256": "f7f65aed2917d10bff90563ee869cbe7cfa19774e3f2bee736712128ee5482df",
+        "size": 8029
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.3/README_zh.md",
+        "sha256": "a82878fed633646599be2832b73f9c6b69665a42980641a8cee2c93dafe54351",
+        "size": 5489
+      }
+    },
+    "dev.turboism.plugin.palette-label-style@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.4/README.md",
+        "sha256": "d54f6cd01f6aca184055388186979c6f0abc08872c83e7f4e58782048be10f62",
+        "size": 5616
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.4/README_ja.md",
+        "sha256": "6d7570b1967a9638703453c0f745bb1908e2e18aeb3aeb6baa74a36b7cee467d",
+        "size": 8029
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.palette-label-style/0.67.4/README_zh.md",
+        "sha256": "5ee7007853a5dcd9b0223df60adf0f8812b0c6183ba9a4a6364bf28a6c08fbab",
+        "size": 5489
+      }
+    },
+    "dev.turboism.plugin.parameter-batch-transfer@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.0/README.md",
+        "sha256": "9f4c845454fb25f8de9fe331db396d7e262b0fcce8ef86f9cefcdeb58b4e1b59",
+        "size": 4666
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.0/README_ja.md",
+        "sha256": "ff0359fffdeebd5933db5e61e5b09b99d67c97205ae0260dfd3fea7887b533e0",
+        "size": 6451
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.0/README_zh.md",
+        "sha256": "134cdc9de822fa2e612a243f21ef1cbec207daafcd2fd6a65dad552f98e0cdc1",
+        "size": 4390
+      }
+    },
+    "dev.turboism.plugin.parameter-batch-transfer@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.1/README.md",
+        "sha256": "9f4c845454fb25f8de9fe331db396d7e262b0fcce8ef86f9cefcdeb58b4e1b59",
+        "size": 4666
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.1/README_ja.md",
+        "sha256": "ff0359fffdeebd5933db5e61e5b09b99d67c97205ae0260dfd3fea7887b533e0",
+        "size": 6451
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.1/README_zh.md",
+        "sha256": "134cdc9de822fa2e612a243f21ef1cbec207daafcd2fd6a65dad552f98e0cdc1",
+        "size": 4390
+      }
+    },
+    "dev.turboism.plugin.parameter-batch-transfer@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.2/README.md",
+        "sha256": "b14c9d257ba2cf17c5ceb6bcbdd71a7e30dec1125a81e705389d5ff62ad8a699",
+        "size": 4634
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.2/README_ja.md",
+        "sha256": "edb0d2dd7eabb0f2ecc346c9fd9af5e9dbece51bda7d607b3953112e69fac13b",
+        "size": 6420
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.2/README_zh.md",
+        "sha256": "d50caa78046f550467d3bd48236556ae3b4081136b0a01afddc3905f71a075a0",
+        "size": 4359
+      }
+    },
+    "dev.turboism.plugin.parameter-batch-transfer@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.3/README.md",
+        "sha256": "c240377ab4bb37aa36ec47bddcc0a14e2614989476242a585ea2247c646d40f5",
+        "size": 4634
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.3/README_ja.md",
+        "sha256": "9ce2761f1952183a247c422f1c1d93bb0e69e2c669ac866bc9007e7ab1afa086",
+        "size": 6420
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.parameter-batch-transfer/0.67.3/README_zh.md",
+        "sha256": "655c7b3530d42fc73df459e95593e566b20f365415c96ccfb55667ef6205ad0a",
+        "size": 4359
+      }
+    },
+    "dev.turboism.plugin.perf-stats@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.0/README.md",
+        "sha256": "0d37741b5a68afe3bbd906bdaeec91648707b2d0399d2cb4ef0b56a3cf034895",
+        "size": 4258
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.0/README_ja.md",
+        "sha256": "ca718b0daa201b55d220c05e2a7668aefa579afe0556f05269724c85f2c43f10",
+        "size": 5903
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.0/README_zh.md",
+        "sha256": "7a2b27565c01e3e425abdbc02b7c6a688d47fb9a7bcd3f2e94f4fd172dd6219d",
+        "size": 4057
+      }
+    },
+    "dev.turboism.plugin.perf-stats@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.1/README.md",
+        "sha256": "0d37741b5a68afe3bbd906bdaeec91648707b2d0399d2cb4ef0b56a3cf034895",
+        "size": 4258
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.1/README_ja.md",
+        "sha256": "ca718b0daa201b55d220c05e2a7668aefa579afe0556f05269724c85f2c43f10",
+        "size": 5903
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.1/README_zh.md",
+        "sha256": "7a2b27565c01e3e425abdbc02b7c6a688d47fb9a7bcd3f2e94f4fd172dd6219d",
+        "size": 4057
+      }
+    },
+    "dev.turboism.plugin.perf-stats@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.2/README.md",
+        "sha256": "37bd3a1940a05da1ff63365b568b65ef1bdcd8ce1ca8bc499748703933d9838b",
+        "size": 4226
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.2/README_ja.md",
+        "sha256": "789dbd79c91d7c833f97fd8c1fc5e5df52c893ee9da43ad7cbd2b9ece56bb6ba",
+        "size": 5872
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.2/README_zh.md",
+        "sha256": "0a6e3e14e512f582eac09e6d90fb348df7606bc35a70e22a6ea82c8ab0fdead3",
+        "size": 4026
+      }
+    },
+    "dev.turboism.plugin.perf-stats@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.3/README.md",
+        "sha256": "858a9b4252a1cd716e6d02795345d06161e6e758ea2c31d89a4602303901346c",
+        "size": 4226
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.3/README_ja.md",
+        "sha256": "2f7ade2c97a1e48b5b1c39f50a74c7801d455fc6dc1931d0b686df0ec4f7c177",
+        "size": 5872
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.perf-stats/0.67.3/README_zh.md",
+        "sha256": "69ddd92daa529e0d858f375e4cc49e3fa5c1449f6de29c4d85253f9ece46c44a",
+        "size": 4026
+      }
+    },
+    "dev.turboism.plugin.physics-editor@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.0/README.md",
+        "sha256": "ab3df509bd22edb6278da09d7b889426c2d40338d3ef483f3763a31b3083e4f7",
+        "size": 3588
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.0/README_ja.md",
+        "sha256": "607738c8bdfee4e0cc051c5b1d29bbfb7c76962964f0051f6d12778f2c120d57",
+        "size": 4947
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.0/README_zh.md",
+        "sha256": "b574e14f3d7e21fc18140dcc469e99fb9550594e4f81b7fd64b53aaf25aad850",
+        "size": 3384
+      }
+    },
+    "dev.turboism.plugin.physics-editor@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.1/README.md",
+        "sha256": "ab3df509bd22edb6278da09d7b889426c2d40338d3ef483f3763a31b3083e4f7",
+        "size": 3588
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.1/README_ja.md",
+        "sha256": "607738c8bdfee4e0cc051c5b1d29bbfb7c76962964f0051f6d12778f2c120d57",
+        "size": 4947
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.1/README_zh.md",
+        "sha256": "b574e14f3d7e21fc18140dcc469e99fb9550594e4f81b7fd64b53aaf25aad850",
+        "size": 3384
+      }
+    },
+    "dev.turboism.plugin.physics-editor@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.2/README.md",
+        "sha256": "1af9661309dd0a06f406eac58be0acbc2b5dee2ee9b96bff39c28d87635fa2e3",
+        "size": 3556
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.2/README_ja.md",
+        "sha256": "5cafe71f1ccfb98be8ccf3c59b885de8506ab94a413287d254b5cbbe768fb2ca",
+        "size": 4916
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.2/README_zh.md",
+        "sha256": "9409aaf3bd7d0ecdcf8b053130b0d2c65740c4b1f7d97a351ccc1e02ed15f36d",
+        "size": 3353
+      }
+    },
+    "dev.turboism.plugin.physics-editor@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.3/README.md",
+        "sha256": "bae9499c8b7b7add84894e002826a2dcf49436664f251d5086010a8c8e20fd68",
+        "size": 3556
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.3/README_ja.md",
+        "sha256": "f05eaef749387e191016a07aafbfb9feb55d0145bded471672576ade8d7e7af5",
+        "size": 4916
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.physics-editor/0.67.3/README_zh.md",
+        "sha256": "e80d8c77589cb307ef4a3ad16c6183d0311f27b7500303ec8d334c070b8fd120",
+        "size": 3353
+      }
+    },
+    "dev.turboism.plugin.protected-export@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.0/README.md",
+        "sha256": "ea673b74a18ad95eca3eb47934c603048b08cade58583e3a20a2068ea38c27d9",
+        "size": 4708
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.0/README_ja.md",
+        "sha256": "ef9765a4ee80aa2d5736fd06a643765cbf50deda7eb5124bd05d1ba667cfc960",
+        "size": 6116
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.0/README_zh.md",
+        "sha256": "4745c8d11abfaec464076cb2eebdcb64b71e62fc79ded45ff20eaa85d3fbaf4c",
+        "size": 4051
+      }
+    },
+    "dev.turboism.plugin.protected-export@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.1/README.md",
+        "sha256": "ea673b74a18ad95eca3eb47934c603048b08cade58583e3a20a2068ea38c27d9",
+        "size": 4708
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.1/README_ja.md",
+        "sha256": "ef9765a4ee80aa2d5736fd06a643765cbf50deda7eb5124bd05d1ba667cfc960",
+        "size": 6116
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.1/README_zh.md",
+        "sha256": "4745c8d11abfaec464076cb2eebdcb64b71e62fc79ded45ff20eaa85d3fbaf4c",
+        "size": 4051
+      }
+    },
+    "dev.turboism.plugin.protected-export@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.2/README.md",
+        "sha256": "2177f622cda91c95379e1d5db31c7b671eeaa107016dacd1ba415c7932e6f46d",
+        "size": 4711
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.2/README_ja.md",
+        "sha256": "607beac240607e1957ff7047ce9abd95a209b5df93f8c6d5ea568f6617ada9cd",
+        "size": 6120
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.2/README_zh.md",
+        "sha256": "756a6709906bf55060943adab5e7db8cad769d7ab15d46005a0a139a7f85e7d3",
+        "size": 4055
+      }
+    },
+    "dev.turboism.plugin.protected-export@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.3/README.md",
+        "sha256": "8087bb9a0cb3186b49d200b92d563c2d86aaaf75b8f7d37b2731476d9c7be7f0",
+        "size": 4711
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.3/README_ja.md",
+        "sha256": "4b39306051e7281fd8d09286ec5231f977c036f98ebb15d686e88b70996834aa",
+        "size": 6120
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.protected-export/0.67.3/README_zh.md",
+        "sha256": "4f0be4e3a1a8633a7e0e0bfc7eb381843435f34dc15942e345a9d618b42885f9",
+        "size": 4055
+      }
+    },
+    "dev.turboism.plugin.psd-clip-mask-import@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.0/README.md",
+        "sha256": "f2a4cc438164e86ae4ad65c3d6e3d475f84f2f06cbc753782c9f6c7aa64a44b8",
+        "size": 7068
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.0/README_ja.md",
+        "sha256": "22f0a25a5799315b14a35dc5c268e41be0e12b5bb0f822f7b937c6f573d9124c",
+        "size": 8289
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.0/README_zh.md",
+        "sha256": "588fa5b8bbec2fbed6d3b0566662875296c559509996f402accdd577208ab122",
+        "size": 5777
+      }
+    },
+    "dev.turboism.plugin.psd-clip-mask-import@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.1/README.md",
+        "sha256": "f2a4cc438164e86ae4ad65c3d6e3d475f84f2f06cbc753782c9f6c7aa64a44b8",
+        "size": 7068
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.1/README_ja.md",
+        "sha256": "22f0a25a5799315b14a35dc5c268e41be0e12b5bb0f822f7b937c6f573d9124c",
+        "size": 8289
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.1/README_zh.md",
+        "sha256": "588fa5b8bbec2fbed6d3b0566662875296c559509996f402accdd577208ab122",
+        "size": 5777
+      }
+    },
+    "dev.turboism.plugin.psd-clip-mask-import@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.2/README.md",
+        "sha256": "f2a4cc438164e86ae4ad65c3d6e3d475f84f2f06cbc753782c9f6c7aa64a44b8",
+        "size": 7068
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.2/README_ja.md",
+        "sha256": "22f0a25a5799315b14a35dc5c268e41be0e12b5bb0f822f7b937c6f573d9124c",
+        "size": 8289
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.2/README_zh.md",
+        "sha256": "588fa5b8bbec2fbed6d3b0566662875296c559509996f402accdd577208ab122",
+        "size": 5777
+      }
+    },
+    "dev.turboism.plugin.psd-clip-mask-import@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.3/README.md",
+        "sha256": "cd29f97fdffecff2668d42620040a4a21028c225cb23886a4bb3f111a670203e",
+        "size": 7036
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.3/README_ja.md",
+        "sha256": "b0a99d6c66299c3db2dda23f77e9fed6bb5d04bfb87fbf1cbf9fdb72318e4888",
+        "size": 8258
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.3/README_zh.md",
+        "sha256": "5d3483922b84d33d3eb9823938e4699731ee7c53e9ccd80a0dd75f0ba2381400",
+        "size": 5746
+      }
+    },
+    "dev.turboism.plugin.psd-clip-mask-import@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.4/README.md",
+        "sha256": "452964afa75cddf708436df4cb723c63b22fb6074fe712a27b417d6f1b504bae",
+        "size": 7036
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.4/README_ja.md",
+        "sha256": "4db486d83eb6f246149d1da70960bfa107f44fcad4f244eaf9a31b1fb554d6ec",
+        "size": 8258
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.psd-clip-mask-import/0.67.4/README_zh.md",
+        "sha256": "ae7ee66b67d5bfd05586c97818c9d0b9424ec7670ca17f4c58e0d96aeb9ed312",
+        "size": 5746
+      }
+    },
+    "dev.turboism.plugin.recent-preview@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.0/README.md",
+        "sha256": "b792132dc146a0f7e5b80f4140be90c812dc7c61386645d8ad3947a50fd33c6b",
+        "size": 4655
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.0/README_ja.md",
+        "sha256": "8f5e7556e0d7ea25739d362e75b4170d2b750e3818013c97c536b9bc8b9ea96c",
+        "size": 7049
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.0/README_zh.md",
+        "sha256": "5d5d6873bac97dc1581ba137ad8f2001376e57a7ce5c4968d07d001df53c84f7",
+        "size": 4521
+      }
+    },
+    "dev.turboism.plugin.recent-preview@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.1/README.md",
+        "sha256": "b792132dc146a0f7e5b80f4140be90c812dc7c61386645d8ad3947a50fd33c6b",
+        "size": 4655
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.1/README_ja.md",
+        "sha256": "8f5e7556e0d7ea25739d362e75b4170d2b750e3818013c97c536b9bc8b9ea96c",
+        "size": 7049
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.1/README_zh.md",
+        "sha256": "5d5d6873bac97dc1581ba137ad8f2001376e57a7ce5c4968d07d001df53c84f7",
+        "size": 4521
+      }
+    },
+    "dev.turboism.plugin.recent-preview@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.2/README.md",
+        "sha256": "392eee471d28b5a1115ec91c542f5d45d071e738bb7f89963e7f28443249921a",
+        "size": 4623
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.2/README_ja.md",
+        "sha256": "f24f211af7f5a9d2b33b7b5265eceffd46b556abcba754a35916e919722ba76c",
+        "size": 7018
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.2/README_zh.md",
+        "sha256": "cc387ef24ff6f49fa15ca4aee48fd9d947d381c0460cd742d615027f636aa2e4",
+        "size": 4490
+      }
+    },
+    "dev.turboism.plugin.recent-preview@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.3/README.md",
+        "sha256": "78af1010b5a49c3333132f7f7cf9250ef686fca7986778bc0bf889ca074dad22",
+        "size": 4623
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.3/README_ja.md",
+        "sha256": "1e777cf4779fc1233f1b9560a126ce18d5a4f97509b53b92a195e039acd2baf3",
+        "size": 7018
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.recent-preview/0.67.3/README_zh.md",
+        "sha256": "fb715f9feacaa33b5daca043ab7b03ab85525ff35666900b5584ef32803d2371",
+        "size": 4490
+      }
+    },
+    "dev.turboism.plugin.scene-palette-enhancer@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.0/README.md",
+        "sha256": "bd454bfc54f524173f0354ac45746978d726bb842f05971dfc18a6438b830d75",
+        "size": 4410
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.0/README_ja.md",
+        "sha256": "d49c926d5c5cdfd62cfb144733935d6742fd1fb9962792a8e54c940429c48fc9",
+        "size": 6055
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.0/README_zh.md",
+        "sha256": "d3a2c9b44b1bc793b23995941d96f34963e3a6eb2ea91c5ab9e1273374d23cec",
+        "size": 4243
+      }
+    },
+    "dev.turboism.plugin.scene-palette-enhancer@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.1/README.md",
+        "sha256": "bd454bfc54f524173f0354ac45746978d726bb842f05971dfc18a6438b830d75",
+        "size": 4410
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.1/README_ja.md",
+        "sha256": "d49c926d5c5cdfd62cfb144733935d6742fd1fb9962792a8e54c940429c48fc9",
+        "size": 6055
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.1/README_zh.md",
+        "sha256": "d3a2c9b44b1bc793b23995941d96f34963e3a6eb2ea91c5ab9e1273374d23cec",
+        "size": 4243
+      }
+    },
+    "dev.turboism.plugin.scene-palette-enhancer@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.2/README.md",
+        "sha256": "bd454bfc54f524173f0354ac45746978d726bb842f05971dfc18a6438b830d75",
+        "size": 4410
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.2/README_ja.md",
+        "sha256": "d49c926d5c5cdfd62cfb144733935d6742fd1fb9962792a8e54c940429c48fc9",
+        "size": 6055
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.2/README_zh.md",
+        "sha256": "35313c92abd84d2bd01f19ff9afdc16a2ae02b30eea69a9188077b9602ad4221",
+        "size": 4219
+      }
+    },
+    "dev.turboism.plugin.scene-palette-enhancer@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.3/README.md",
+        "sha256": "c91c762ee6528c6ccc5b82d9cb17bad64d47c289311b4230619c91cc537cc6de",
+        "size": 4378
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.3/README_ja.md",
+        "sha256": "3b5376522b844f5f751405c78f628020f4cfe65a2830e86a0dd636ffdf5419bb",
+        "size": 6024
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.3/README_zh.md",
+        "sha256": "0456a6fd2bd2e2eed55ff13c180067fee5930e7c5518ecd8d6e8851453c3d535",
+        "size": 4188
+      }
+    },
+    "dev.turboism.plugin.scene-palette-enhancer@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.4/README.md",
+        "sha256": "6fb546f8580e85fa26dfea6e5c6f0252987225044bccd405ba7cc2a52906aa88",
+        "size": 4378
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.4/README_ja.md",
+        "sha256": "f9c5835d7393ddd7b7b6ed8a12c8009278610b1bcc52093f65f990acbee211ad",
+        "size": 6024
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.scene-palette-enhancer/0.67.4/README_zh.md",
+        "sha256": "a601a31e2b863d2e82e3170b9709727bcb6c7036d3122a64cece41c4bf1111b7",
+        "size": 4188
+      }
+    },
+    "dev.turboism.plugin.selection-brush@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.0/README.md",
+        "sha256": "ad50303ba52a26e5698572221b1025b5483addf37dca08bed5933a6c13b656e9",
+        "size": 8344
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.0/README_ja.md",
+        "sha256": "ba5bca850d9bcfae3efdf35713b7f3cfe6418e6b0b975f84ea01629425ca2ada",
+        "size": 7575
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.0/README_zh.md",
+        "sha256": "0c7849ceb60daf7d81c9dd766db4f4ba4ccb2a7496d68fd4880fd8732ccb060d",
+        "size": 5383
+      }
+    },
+    "dev.turboism.plugin.selection-brush@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.1/README.md",
+        "sha256": "ad50303ba52a26e5698572221b1025b5483addf37dca08bed5933a6c13b656e9",
+        "size": 8344
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.1/README_ja.md",
+        "sha256": "ba5bca850d9bcfae3efdf35713b7f3cfe6418e6b0b975f84ea01629425ca2ada",
+        "size": 7575
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.1/README_zh.md",
+        "sha256": "0c7849ceb60daf7d81c9dd766db4f4ba4ccb2a7496d68fd4880fd8732ccb060d",
+        "size": 5383
+      }
+    },
+    "dev.turboism.plugin.selection-brush@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.2/README.md",
+        "sha256": "94ab0937baa889543952f98c0be7d1a9f04738a0e4be72e538fcb3e288df2fc0",
+        "size": 8471
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.2/README_ja.md",
+        "sha256": "9b8bea5db9aadad0ca9cfdb1d4930f79c81ed02dca9ef7809f7bd335e569cb94",
+        "size": 7682
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.2/README_zh.md",
+        "sha256": "d3a181539525f542bc68a534e3d6aae11c5a4740c0bd4452b9828dce9881b7d7",
+        "size": 5570
+      }
+    },
+    "dev.turboism.plugin.selection-brush@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.3/README.md",
+        "sha256": "1c19eedad4cf336e7e545e2dad493002e302d34a45dcc23961fcdb56ee54e98f",
+        "size": 8471
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.3/README_ja.md",
+        "sha256": "a7d41a76ad742e4261d11f6058733d65b9de2bd1043c0819059c329bc92e910a",
+        "size": 7682
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.selection-brush/0.67.3/README_zh.md",
+        "sha256": "6549ad3b63d4f6c504bb9a5f7f29be38dd250f9b449e00e4506935b4250da3ab",
+        "size": 5570
+      }
+    },
+    "dev.turboism.plugin.texture-atlas@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.0/README.md",
+        "sha256": "f355cf7b296ea9d2eb0d987235afd8a2109b0f9035940884fd14e1143bda7595",
+        "size": 15302
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.0/README_ja.md",
+        "sha256": "5cdb6da51bb516b045e652ab46af036614201269497eb42d5d0b402a32cbc058",
+        "size": 18734
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.0/README_zh.md",
+        "sha256": "050bb73f931506109f22219d2919752b0435cc131437da5a19a3945696f0a263",
+        "size": 14245
+      }
+    },
+    "dev.turboism.plugin.texture-atlas@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.1/README.md",
+        "sha256": "f355cf7b296ea9d2eb0d987235afd8a2109b0f9035940884fd14e1143bda7595",
+        "size": 15302
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.1/README_ja.md",
+        "sha256": "5cdb6da51bb516b045e652ab46af036614201269497eb42d5d0b402a32cbc058",
+        "size": 18734
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.1/README_zh.md",
+        "sha256": "050bb73f931506109f22219d2919752b0435cc131437da5a19a3945696f0a263",
+        "size": 14245
+      }
+    },
+    "dev.turboism.plugin.texture-atlas@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.2/README.md",
+        "sha256": "7565677ce8a485e1907bf2546ded37ca83861dcf17263efd0b6bd69c487929f5",
+        "size": 16827
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.2/README_ja.md",
+        "sha256": "2da022f3b7bd571817e232929fee1c3994aedc28f4bd6ff246186849c1b4c647",
+        "size": 20636
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.2/README_zh.md",
+        "sha256": "6c34b05cf6b1f73e410d019aec064aee0586a25101a449346e5b07d70639ddf2",
+        "size": 15737
+      }
+    },
+    "dev.turboism.plugin.texture-atlas@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.3/README.md",
+        "sha256": "3f3525f63a9e058deb8bf6005605df4dda7d46f3517a3fc5c4cce1c502e0de0a",
+        "size": 16827
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.3/README_ja.md",
+        "sha256": "e1899b975ff10fd804e8540ed36fc59af4637642bdc2177630960e8d2262006c",
+        "size": 20636
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas/0.67.3/README_zh.md",
+        "sha256": "e43b150a2bbf009e47e4e90a6a07f6fa9e38800d80517ac4461e75d601907563",
+        "size": 15737
+      }
+    },
+    "dev.turboism.plugin.texture-atlas-stats@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.0/README.md",
+        "sha256": "4d8d5e5489492b63d0a8029d5534d4ccbe2857241277bffe18d2c81a518468dc",
+        "size": 4088
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.0/README_ja.md",
+        "sha256": "8b5dcf6acb98d269a963185039e8b13d9a986430975686e1d1ca17163e6c03b5",
+        "size": 5759
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.0/README_zh.md",
+        "sha256": "9e71ee36d8ac085d9925a1fc1ad156b83b5b6dc79b5a43e07fb82e259ab4703f",
+        "size": 3859
+      }
+    },
+    "dev.turboism.plugin.texture-atlas-stats@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.1/README.md",
+        "sha256": "4d8d5e5489492b63d0a8029d5534d4ccbe2857241277bffe18d2c81a518468dc",
+        "size": 4088
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.1/README_ja.md",
+        "sha256": "8b5dcf6acb98d269a963185039e8b13d9a986430975686e1d1ca17163e6c03b5",
+        "size": 5759
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.1/README_zh.md",
+        "sha256": "9e71ee36d8ac085d9925a1fc1ad156b83b5b6dc79b5a43e07fb82e259ab4703f",
+        "size": 3859
+      }
+    },
+    "dev.turboism.plugin.texture-atlas-stats@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.2/README.md",
+        "sha256": "e29e98db34efe19d8a0af117801f673c1ec4d02aa3b8c565404b045da8cb04b3",
+        "size": 4056
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.2/README_ja.md",
+        "sha256": "c2406933c331098e353ff03c1b9f886e8337fddeed2506a6ed7153dc9615f42a",
+        "size": 5728
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.2/README_zh.md",
+        "sha256": "b897ab97594ce7ce90c71f4d7671e5a7134364bb17a5a81f7da19f2ad30d74ff",
+        "size": 3828
+      }
+    },
+    "dev.turboism.plugin.texture-atlas-stats@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.3/README.md",
+        "sha256": "54cf7ecdf73fd9a5b4f17f9da5910c6f892aa54095bed5aca2d9cba99259e69a",
+        "size": 4056
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.3/README_ja.md",
+        "sha256": "038a6756a65b839f517f56b124eae18bc27a697891957f373c8a691797c560a2",
+        "size": 5728
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-stats/0.67.3/README_zh.md",
+        "sha256": "c66d19af5741ff2219ac62d952b54261ebd912785184fd0b0d7b6206c05200bc",
+        "size": 3828
+      }
+    },
+    "dev.turboism.plugin.uitheme@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.0/README.md",
+        "sha256": "baea865c2b631faa5d25646099c3c3cda1aa68bed460c02c6e43cac58afe9474",
+        "size": 5320
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.0/README_ja.md",
+        "sha256": "f368f5d62f614917c89b04ec8e6d86c2de67b013db492d5c24f48eb5a45e3a62",
+        "size": 7718
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.0/README_zh.md",
+        "sha256": "55515b18c6943f0ecc505c93783ff53fe06716dc2e776c74c337f5ad7a983406",
+        "size": 5059
+      }
+    },
+    "dev.turboism.plugin.uitheme@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.1/README.md",
+        "sha256": "baea865c2b631faa5d25646099c3c3cda1aa68bed460c02c6e43cac58afe9474",
+        "size": 5320
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.1/README_ja.md",
+        "sha256": "f368f5d62f614917c89b04ec8e6d86c2de67b013db492d5c24f48eb5a45e3a62",
+        "size": 7718
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.1/README_zh.md",
+        "sha256": "55515b18c6943f0ecc505c93783ff53fe06716dc2e776c74c337f5ad7a983406",
+        "size": 5059
+      }
+    },
+    "dev.turboism.plugin.uitheme@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.2/README.md",
+        "sha256": "11365e8e6c43edf67d3142424a523f43345eddb39ec8373731d7ab755b404586",
+        "size": 5288
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.2/README_ja.md",
+        "sha256": "2d4d979d004f924b23bab88448d422e38cc5fcf903564f6c108fc7f3fbb9b4fd",
+        "size": 7687
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.2/README_zh.md",
+        "sha256": "66451df4a132f27b77f1e466751e839cca080c6419cb25869eb1fcafa6018bd0",
+        "size": 5028
+      }
+    },
+    "dev.turboism.plugin.uitheme@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.3/README.md",
+        "sha256": "8b44605da446929cdc051e3e19994b030ac5a41a96d7ffdf1fc673c05b850e91",
+        "size": 5288
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.3/README_ja.md",
+        "sha256": "61308ce7ea6926999cf1881fb2b8d05b0b7059d0ee1a30112bbc7a4c8ed9190f",
+        "size": 7687
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.uitheme/0.67.3/README_zh.md",
+        "sha256": "d599c3f3a90adbe8d256b3eb563450b20015c3913ec2ca9e0f3169b8220bd6f0",
+        "size": 5028
+      }
+    },
+    "dev.turboism.plugin.warp-deformer-alt-symmetry@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.0/README.md",
+        "sha256": "673d3e8b50ce629a488e9bb5576d6d6f46b77f2956678a35b0f7190c69ccfa75",
+        "size": 5029
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.0/README_ja.md",
+        "sha256": "6e867bad4cdf178dca15cf1a6117a77afd7e62326a0bee13e26edba5a7fb1f2b",
+        "size": 6480
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.0/README_zh.md",
+        "sha256": "4f1158bb41671e7c1c96c8f103bdb9281974800e643782cdb957893037525b94",
+        "size": 4745
+      }
+    },
+    "dev.turboism.plugin.warp-deformer-alt-symmetry@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.1/README.md",
+        "sha256": "673d3e8b50ce629a488e9bb5576d6d6f46b77f2956678a35b0f7190c69ccfa75",
+        "size": 5029
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.1/README_ja.md",
+        "sha256": "6e867bad4cdf178dca15cf1a6117a77afd7e62326a0bee13e26edba5a7fb1f2b",
+        "size": 6480
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.1/README_zh.md",
+        "sha256": "4f1158bb41671e7c1c96c8f103bdb9281974800e643782cdb957893037525b94",
+        "size": 4745
+      }
+    },
+    "dev.turboism.plugin.warp-deformer-alt-symmetry@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.2/README.md",
+        "sha256": "673d3e8b50ce629a488e9bb5576d6d6f46b77f2956678a35b0f7190c69ccfa75",
+        "size": 5029
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.2/README_ja.md",
+        "sha256": "6e867bad4cdf178dca15cf1a6117a77afd7e62326a0bee13e26edba5a7fb1f2b",
+        "size": 6480
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.2/README_zh.md",
+        "sha256": "83b9ba7803bdd14ad9be0c17269a5366e354445075b3bf6cac277a09d9d627a4",
+        "size": 4745
+      }
+    },
+    "dev.turboism.plugin.warp-deformer-alt-symmetry@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.3/README.md",
+        "sha256": "f3347f196a6a5cfeb117775a942e036b6fc1ecdfe05eb182de78f8bc605c3de3",
+        "size": 4997
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.3/README_ja.md",
+        "sha256": "b28d5f5e109f6a66dc50671aeb861f22cbfb0d5cb62ff500f58d6124994c31cd",
+        "size": 6449
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.3/README_zh.md",
+        "sha256": "171ec2a5a3deda91e8e5e0738767c9bcf0915b446ffb4e07af7b8e28de91afe5",
+        "size": 4714
+      }
+    },
+    "dev.turboism.plugin.warp-deformer-alt-symmetry@0.67.4": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.4/README.md",
+        "sha256": "7312d3851b44ebcb58161f7e9d414bbcf0a96873f5b99a14aa8f3459fc01c4cb",
+        "size": 4997
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.4/README_ja.md",
+        "sha256": "d621e5d879e4bede35f5fea131f54b1d32d6ddaec4b844ab2449de35f0a8b378",
+        "size": 6449
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.warp-deformer-alt-symmetry/0.67.4/README_zh.md",
+        "sha256": "e1ac6cb777edc374f5c5a8a33479679f577fdd3dd76c06f2f49e9ab33388417e",
+        "size": 4714
+      }
+    },
+    "dev.turboism.plugin.webdav@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.0/README.md",
+        "sha256": "fc6ef4fa003328778d25656e5a83037f997fd8b7d9111ab6e82201f9192b734f",
+        "size": 6179
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.0/README_ja.md",
+        "sha256": "94e9bd1f6afb518ff81f7218b5adc32beffc7cfd47e67b1c8521d3a65bd88a71",
+        "size": 8713
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.0/README_zh.md",
+        "sha256": "6af1a6219e854fa24f00e7c43107124aad33bddb33f68749829c947d1e7288a6",
+        "size": 5838
+      }
+    },
+    "dev.turboism.plugin.webdav@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.1/README.md",
+        "sha256": "fc6ef4fa003328778d25656e5a83037f997fd8b7d9111ab6e82201f9192b734f",
+        "size": 6179
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.1/README_ja.md",
+        "sha256": "94e9bd1f6afb518ff81f7218b5adc32beffc7cfd47e67b1c8521d3a65bd88a71",
+        "size": 8713
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.1/README_zh.md",
+        "sha256": "6af1a6219e854fa24f00e7c43107124aad33bddb33f68749829c947d1e7288a6",
+        "size": 5838
+      }
+    },
+    "dev.turboism.plugin.webdav@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.2/README.md",
+        "sha256": "a9a7c21820e340b5a1465540bb1f14d2be6a490e3b35193d797b6e5dd3d800c5",
+        "size": 6147
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.2/README_ja.md",
+        "sha256": "f491234d8d42198a9a0b3bcd0575c960343dadb179be4e717bbf14a0d57307bc",
+        "size": 8682
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.2/README_zh.md",
+        "sha256": "be1d140fae342660935d62bf3a6ad3971f808cc6a8ea51ad062268e0de0951af",
+        "size": 5807
+      }
+    },
+    "dev.turboism.plugin.webdav@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.3/README.md",
+        "sha256": "3f27eba2832e8d9bf928016972f148a08e5f1021c018f97011a31cf632078ed9",
+        "size": 6147
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.3/README_ja.md",
+        "sha256": "30d247e897e1e96ea4bb98a7cd56597169342059108ab018314dacbc8856505e",
+        "size": 8682
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.webdav/0.67.3/README_zh.md",
+        "sha256": "ae222796559c090de9a4fcc22dc9a66c1557012d704a98b71427cddb9796a0d8",
+        "size": 5807
+      }
+    },
+    "dev.turboism.plugin.frame-animation-import@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.0/README.md",
+        "sha256": "529833838263499797d905a879ae19a19f6b753776ba567bae041a93e6fee32c",
+        "size": 5663
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.0/README_ja.md",
+        "sha256": "636bacd8194eaddd8eb8cc1913d870207d60d162baa6422be25e41cee2387ba6",
+        "size": 6381
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.0/README_zh.md",
+        "sha256": "6de2ed396f5270b6152a9ed1e738385e709f61cbb019116ad5fa24fcf6792ee5",
+        "size": 5356
+      }
+    },
+    "dev.turboism.plugin.frame-animation-import@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.1/README.md",
+        "sha256": "48fb2a9e2cf589eebd99c08e323c68f675d45f6932ffaad561925aa3488e279f",
+        "size": 5912
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.1/README_ja.md",
+        "sha256": "78deca47d30d3601dee5e58d9a6be48c92b06874d2fa4c504db2c8ae2b805aaa",
+        "size": 6636
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.1/README_zh.md",
+        "sha256": "1180a1e42f390b1c84552567994bfac4446a48332fb3d2f36fe1f9e0df0a7cf0",
+        "size": 5586
+      }
+    },
+    "dev.turboism.plugin.frame-animation-import@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.2/README.md",
+        "sha256": "645bde867cfc5099e5b81007968818632fdb4f496c4735defab396b1eabc3fae",
+        "size": 5880
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.2/README_ja.md",
+        "sha256": "2f1f401112630bd9bcef4a0f5882ea9fbfe4a9e85061c9e61215f45d45d777a5",
+        "size": 6605
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.2/README_zh.md",
+        "sha256": "077b7b296c6b944fe92981feb9a62e18e71d5bbe5c6eb38d0963cda986f0daeb",
+        "size": 5555
+      }
+    },
+    "dev.turboism.plugin.frame-animation-import@0.67.3": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.3/README.md",
+        "sha256": "c282007cb1a626a7b044f815c113f6bfa03fb3aebac3f9bc6916a83957d54899",
+        "size": 5880
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.3/README_ja.md",
+        "sha256": "dc97d921c820b2863bdcf42c1cfaf835a8698cdaf5f1175fe50546dd3bff7730",
+        "size": 6605
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.frame-animation-import/0.67.3/README_zh.md",
+        "sha256": "ac0c38444783c766ccdf05ad74fae9fd92372525001f0ec6bcdb63c1b52e9ab4",
+        "size": 5555
+      }
+    },
+    "dev.turboism.plugin.texture-atlas-dalsoo@0.67.0": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.0/README.md",
+        "sha256": "78a6d015c3aa949ce1feeb4bf42848d797986483f529dd4418a363d363168ca4",
+        "size": 9233
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.0/README_ja.md",
+        "sha256": "36943ac41df4fd24edd8cb2c8ab722df59c66e1257381535d15079c1e9ad9376",
+        "size": 11429
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.0/README_zh.md",
+        "sha256": "5e293d1e908294279aa03c73b7abcc6dca0b58d85efeb00ec4c2b4d22151e878",
+        "size": 8215
+      }
+    },
+    "dev.turboism.plugin.texture-atlas-dalsoo@0.67.1": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.1/README.md",
+        "sha256": "e2ae1412126a89b201ebe71c39b7c6725442d4320c7ef0788d32051f59e772ae",
+        "size": 10755
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.1/README_ja.md",
+        "sha256": "5577186cab362e81d84947ea69da87df65a7f58b34b1b952549ba04e827d1e23",
+        "size": 13330
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.1/README_zh.md",
+        "sha256": "1484d42a1f0a839ef47cb80b17765f9ea9e533d67a77ebbc6b19333361ce62d2",
+        "size": 9706
+      }
+    },
+    "dev.turboism.plugin.texture-atlas-dalsoo@0.67.2": {
+      "en": {
+        "file": "README.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.2/README.md",
+        "sha256": "dd2be4052e1286281cdb763f595226a6dfe0f1444f2b1ad72d269f27511f3606",
+        "size": 10755
+      },
+      "ja": {
+        "file": "README_ja.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.2/README_ja.md",
+        "sha256": "c3c67becd2fa223dd5fd7d962cb13be2c14f88bc2133850fd3ae1c4b327cdb1b",
+        "size": 13330
+      },
+      "zh": {
+        "file": "README_zh.md",
+        "path": "readmes/dev.turboism.plugin.texture-atlas-dalsoo/0.67.2/README_zh.md",
+        "sha256": "8e8265c446044b8abe52d33950efdc54d13b15a9baed1984e81ca612603ffba9",
+        "size": 9706
+      }
+    }
+  }
+}

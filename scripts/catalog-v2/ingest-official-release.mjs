@@ -887,7 +887,7 @@ function validateDependencyList(dependencies, path, issues) {
     if (dependency.ordering !== undefined && !ORDERING_VALUES.includes(dependency.ordering)) {
       issues.push({ path: `${itemPath}.ordering`, message: `must be one of ${ORDERING_VALUES.join(", ")}` });
     }
-    if (dependency.reason !== undefined) checkString(dependency, "reason", itemPath, issues, { min: 1, max: 500 });
+    if (dependency.reason !== undefined) checkString(dependency, "reason", itemPath, issues, { min: 1, max: 2000 });
   });
   return dependencies;
 }
@@ -914,7 +914,7 @@ function validatePermissionList(permissions, path, issues) {
     if (permission.scope !== undefined && !PERMISSION_SCOPE_VALUES.includes(permission.scope)) {
       issues.push({ path: `${itemPath}.scope`, message: `must be one of ${PERMISSION_SCOPE_VALUES.join(", ")}` });
     }
-    checkString(permission, "reason", itemPath, issues, { min: 1, max: 500 });
+    checkString(permission, "reason", itemPath, issues, { min: 1, max: 2000 });
   });
   return permissions;
 }

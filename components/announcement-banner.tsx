@@ -39,7 +39,12 @@ export function AnnouncementBanner() {
   useEffect(() => {
     const controller = new AbortController();
     fetch(SOURCE, { signal: controller.signal })
-      .then((res) => (res.ok && res.headers.get('content-type')?.startsWith('text/plain') ? res.text() : ''))
+      .then((res) => {
+        if (res.ok && res.headers.get('content-type')?.startsWith('text/plain')) return res.text();
+        // Release an unused body; otherwise the request stays open until the page is closed.
+        void res.body?.cancel().catch(() => {});
+        return '';
+      })
       .then(setRaw)
       .catch(() => {});
     return () => controller.abort();

@@ -9,6 +9,7 @@ import {
   filterPlugins,
   getDirectoryPluginBySlug,
   getDirectoryPlugins,
+  getDirectoryListingPlugins,
   loadDirectorySnapshot,
   normalizeCatalogLocale,
   resolveLocalizedPlugin,
@@ -95,6 +96,12 @@ test("populated signed generation projects latest active releases, 5 locales wit
 
     // Filtering by localized query, tag, and category
     const all = getDirectoryPlugins(storage);
+    const listing = getDirectoryListingPlugins(storage);
+    assert.equal(listing.length, all.length);
+    assert.deepEqual(listing.map((p) => p.slug), all.map((p) => p.slug));
+    assert.ok(listing.every((p) => !("releases" in p) && !("sha256" in p) && !("dependencies" in p)));
+    assert.deepEqual(filterPlugins(listing, "서버", null, null, "ko").map((p) => p.slug), ["mcp"]);
+    assert.deepEqual(filterPlugins(listing, "5.3.04", null, null, "en").map((p) => p.slug), ["mcp"]);
     assert.deepEqual(filterPlugins(all, "서버", null, null, "ko").map((p) => p.slug), ["mcp"]);
     assert.deepEqual(filterPlugins(all, "服務", null, null, "zh-Hant").map((p) => p.slug), ["mcp"]);
     assert.deepEqual(filterPlugins(all, "", "backup", null, "en").map((p) => p.slug), ["webdav-backup"]);

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, AlertTriangle, Download, Search, SlidersHorizontal, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { PluginEntry } from "@/lib/directory";
+import type { PluginEntry, DirectoryListingEntry } from "@/lib/directory";
 import {
   collectAvailableCategories,
   collectAvailableTags,
@@ -16,7 +16,7 @@ import { renderSafeReadmeMarkdown, selectLocalizedReadme } from "@/lib/readme-re
 
 const REPORT_URL = "https://github.com/turboism/turboism-plugin-directory/issues/new?template=directory-report.md";
 
-export function DirectoryBrowser({ plugins = [] }: { plugins?: PluginEntry[] }) {
+export function DirectoryBrowser({ plugins = [] }: { plugins?: DirectoryListingEntry[] }) {
   const { copy, catalogLocale } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -280,7 +280,7 @@ function EmptyDirectory({
   );
 }
 
-function PluginCard({ plugin }: { plugin: PluginEntry }) {
+function PluginCard({ plugin }: { plugin: DirectoryListingEntry }) {
   const { copy, catalogLocale } = useLanguage();
   const isOfficial = plugin.trust === "official";
   const localized = resolveLocalizedPlugin(plugin, catalogLocale);

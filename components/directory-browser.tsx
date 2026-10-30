@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, AlertTriangle, Download, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, AlertTriangle, ChevronDown, Download, Search, SlidersHorizontal, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { PluginEntry, DirectoryListingEntry } from "@/lib/directory";
 import {
@@ -28,6 +28,7 @@ export function DirectoryBrowser({ plugins = [] }: { plugins?: DirectoryListingE
   const qParam = searchParams.get("q") || "";
 
   const [userQuery, setUserQuery] = useState<string | null>(null);
+  const [tagsOpen, setTagsOpen] = useState(false);
   const query = userQuery ?? qParam;
 
   const updateParam = (key: string, value: string | null) => {
@@ -208,7 +209,22 @@ export function DirectoryBrowser({ plugins = [] }: { plugins?: DirectoryListingE
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-8" aria-label={copy.tagsLabel}>
+      <button
+        type="button"
+        className={`md:hidden inline-flex items-center gap-1.5 min-h-11 ${tagsOpen ? "mb-3" : "mb-8"} px-4 rounded-full border border-slate-200 bg-white/50 text-sm font-medium text-slate-600 hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 cursor-pointer`}
+        aria-expanded={tagsOpen}
+        aria-controls="plugin-tag-list"
+        onClick={() => setTagsOpen((open) => !open)}
+      >
+        {tagsOpen ? copy.hideTags : copy.showTags} ({availableTags.length})
+        <ChevronDown size={16} className={`transition-transform ${tagsOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      <div
+        id="plugin-tag-list"
+        className={`${tagsOpen ? "flex" : "hidden"} md:flex flex-wrap gap-2 mb-8`}
+        aria-label={copy.tagsLabel}
+      >
         <button
           className={`px-4 py-1.5 min-h-11 min-w-11 rounded-full text-sm font-medium border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 cursor-pointer ${!selectedTag ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm font-semibold" : "bg-white/50 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-white"}`}
           type="button"
@@ -280,19 +296,44 @@ function EmptyDirectory({
   );
 }
 
+// "5.0.00" .. "5.3.04" -> "5.0–5.3"; a single major.minor stays as-is.
+function formatCubismRange(plugin: DirectoryListingEntry): string | null {
+  if (plugin.cubismVersions.length === 0) return null;
+  const minors = [...new Set(plugin.cubismVersions.map((v) => v.split(".").slice(0, 2).join(".")))];
+  return minors.length === 1 ? minors[0] : `${minors[0]}–${minors[minors.length - 1]}`;
+}
+
 function PluginCard({ plugin }: { plugin: DirectoryListingEntry }) {
   const { copy, catalogLocale } = useLanguage();
   const isOfficial = plugin.trust === "official";
   const localized = resolveLocalizedPlugin(plugin, catalogLocale);
   const categoryLabel = copy.categoryNames[plugin.category] ?? plugin.category;
+  const cubismRange = formatCubismRange(plugin);
 
   return (
     <article className="group flex flex-col p-6 rounded-2xl border border-slate-200/80 bg-white/70 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-blue-200/80 transition-all">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="text-blue-600 font-mono text-xs font-semibold uppercase tracking-wider">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-2">
+        <span
+          className="font-mono text-[11px] font-semibold whitespace-nowrap text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200"
+          title={copy.latestVersionLabel}
+        >
+          v{plugin.latestVersion} ({plugin.channel})
+        </span>
+        {cubismRange && (
+          <span
+            className="font-mono text-[11px] font-semibold whitespace-nowrap text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200"
+            title={copy.cubismVersionsLabel}
+          >
+            Cubism {cubismRange}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
+        <span className="text-blue-600 whitespace-nowrap font-mono text-xs font-semibold uppercase tracking-wider">
           {isOfficial ? copy.official : copy.reviewed}
         </span>
-        <span className="font-mono text-xs font-semibold uppercase tracking-wider text-slate-600">
+        <span className="whitespace-nowrap font-mono text-xs font-semibold uppercase tracking-wider text-slate-600">
           {categoryLabel}
         </span>
       </div>

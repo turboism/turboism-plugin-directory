@@ -28,6 +28,8 @@ export type Copy = {
   clearSearch: string;
   directoryLabel: string;
   tagsLabel: string;
+  showTags: string;
+  hideTags: string;
   categoriesLabel: string;
   allCategories: string;
   noMatchTitle: string;
@@ -90,6 +92,8 @@ const copy: Record<Language, Copy> = {
     clearSearch: "검색 지우기",
     directoryLabel: "플러그인 디렉터리",
     tagsLabel: "플러그인 태그",
+    showTags: "태그 보기",
+    hideTags: "태그 접기",
     categoriesLabel: "플러그인 카테고리",
     allCategories: "모든 카테고리",
     noMatchTitle: "일치하는 플러그인이 없습니다.",
@@ -160,6 +164,8 @@ const copy: Record<Language, Copy> = {
     clearSearch: "Clear search",
     directoryLabel: "Plugin directory",
     tagsLabel: "Plugin tags",
+    showTags: "Show tags",
+    hideTags: "Hide tags",
     categoriesLabel: "Plugin categories",
     allCategories: "All categories",
     noMatchTitle: "No matching plugins.",
@@ -230,6 +236,8 @@ const copy: Record<Language, Copy> = {
     clearSearch: "清除搜索",
     directoryLabel: "插件目录",
     tagsLabel: "插件标签",
+    showTags: "展开标签",
+    hideTags: "收起标签",
     categoriesLabel: "插件分类",
     allCategories: "全部分类",
     noMatchTitle: "没有匹配的插件。",
@@ -300,6 +308,8 @@ const copy: Record<Language, Copy> = {
     clearSearch: "検索をクリア",
     directoryLabel: "プラグインディレクトリ",
     tagsLabel: "プラグインタグ",
+    showTags: "タグを表示",
+    hideTags: "タグを閉じる",
     categoriesLabel: "プラグインカテゴリ",
     allCategories: "すべてのカテゴリ",
     noMatchTitle: "一致するプラグインはありません。",

@@ -75,6 +75,36 @@ export function getDirectoryPlugins(storage?: DirectoryStorageOptions): PluginEn
   return loadDirectorySnapshot(storage).plugins;
 }
 
+/**
+ * The public directory list needs only the fields used by search and card
+ * rendering. Keep the full signed release history on detail pages and APIs;
+ * serializing it into every listing card bloats the HTML + React payload.
+ */
+export type DirectoryListingEntry = Pick<PluginEntry,
+  "id" | "slug" | "name" | "summary" | "localizations" | "trust" |
+  "author" | "license" | "category" | "tags" | "latestVersion" |
+  "channel" | "downloadUrl" | "cubismVersions"
+>;
+
+export function getDirectoryListingPlugins(storage?: DirectoryStorageOptions): DirectoryListingEntry[] {
+  return getDirectoryPlugins(storage).map((plugin) => ({
+    id: plugin.id,
+    slug: plugin.slug,
+    name: plugin.name,
+    summary: plugin.summary,
+    localizations: plugin.localizations,
+    trust: plugin.trust,
+    author: plugin.author,
+    license: plugin.license,
+    category: plugin.category,
+    tags: plugin.tags,
+    latestVersion: plugin.latestVersion,
+    channel: plugin.channel,
+    downloadUrl: plugin.downloadUrl,
+    cubismVersions: plugin.cubismVersions,
+  }));
+}
+
 export function getDirectoryPluginBySlug(
   slug: string,
   storage?: DirectoryStorageOptions,

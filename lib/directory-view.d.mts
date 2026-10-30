@@ -116,18 +116,21 @@ export function resolveLocalizedPlugin(
   browserHint?: string | null,
 ): LocalizedPluginText & { locale: CatalogLocale };
 
-export function collectAvailableTags(entries: readonly PluginEntry[]): string[];
-export function collectAvailableCategories(entries: readonly PluginEntry[]): string[];
+export function collectAvailableTags(entries: readonly Pick<PluginEntry, "tags">[]): string[];
+export function collectAvailableCategories(entries: readonly Pick<PluginEntry, "category">[]): string[];
 export function projectCatalogToDirectory(
   catalog: RawCatalogV2,
   generationId?: string,
 ): DirectorySnapshot;
-export function filterPlugins(
-  entries: readonly PluginEntry[],
+export function filterPlugins<T extends Pick<PluginEntry,
+  "id" | "slug" | "name" | "summary" | "localizations" | "author" |
+  "license" | "category" | "tags" | "latestVersion" | "cubismVersions"
+>>(
+  entries: readonly T[],
   query: string,
   selectedTag?: string | null,
   selectedCategory?: string | null,
   locale?: string,
   selectedAuthor?: string | null,
   selectedLicense?: string | null,
-): PluginEntry[];
+): T[];

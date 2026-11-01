@@ -35,8 +35,8 @@ async function getPublic(url,maxBytes,expectedMedia){
 }
 
 const [catalogBytes,sigBytes]=await Promise.all([
- getPublic(base+'catalog.json',2*1024*1024,'application/vnd.turboism.plugin-catalog+json'),
- getPublic(base+'catalog.json.sig',16*1024,'application/vnd.turboism.plugin-catalog-signature+json'),
+ getPublic(base+'catalog.json',2*1024*1024,'application/vnd.turboism.plugin-catalog+json;version=2'),
+ getPublic(base+'catalog.json.sig',16*1024,'application/vnd.turboism.plugin-catalog-signature+json;version=2'),
 ]);
 const trusted=loadTrustedKeys(keysPath);
 if(!trusted.ok)throw new Error('Invalid local production trust roots');

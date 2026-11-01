@@ -78,11 +78,21 @@ async function readVerifiedJar(item){
  if(response.headers.has('content-length')&&announced!==item.size){
   await response.body.cancel();throw new Error('JAR size header mismatch');
  }
- const content=Buffer.from(await response.arrayBuffer());
- if(content.length!==item.size)throw new Error('JAR byte length mismatch');
- const sha=createHash('sha256').update(content).digest('hex');
- if(sha!==item.sha256)throw new Error('JAR digest mismatch');
- return content;
+ const reader=response.body.getReader(),chunks=[];
+ const sha256=createHash('sha256');let received=0;
+ try{
+  while(true){
+   const {done,value}=await reader.read();
+   if(done)break;
+   received+=value.byteLength;
+   if(received>item.size){await reader.cancel();throw new Error('JAR exceeds signed size');}
+   sha256.update(value);
+   chunks.push(Buffer.from(value));
+  }
+ }finally{reader.releaseLock();}
+ if(received!==item.size)throw new Error('JAR byte length mismatch');
+ if(sha256.digest('hex')!==item.sha256)throw new Error('JAR digest mismatch');
+ return Buffer.concat(chunks,item.size);
 }
 let processed=0;
 const queue=[...index.artifacts];

@@ -32,6 +32,10 @@
     [
       "download",
       "https://turboism.dev/download"
+    ],
+    [
+      "about",
+      "https://turboism.dev/about"
     ]
   ],
   "labels": {
@@ -45,7 +49,8 @@
       "download": "Download",
       "menu": "Navigation and language",
       "nav": "Turboism sites",
-      "sponsor": "Sponsor"
+      "sponsor": "Sponsor",
+      "about": "About"
     },
     "zh": {
       "home": "首页",
@@ -57,19 +62,8 @@
       "download": "下载",
       "menu": "导航与语言",
       "nav": "Turboism 站点",
-      "sponsor": "赞助"
-    },
-    "ja": {
-      "home": "ホーム",
-      "docs": "ドキュメント",
-      "sdk": "SDK",
-      "plugins": "プラグイン",
-      "learn": "学ぶ",
-      "thanks": "謝辞",
-      "download": "ダウンロード",
-      "menu": "ナビゲーションと言語",
-      "nav": "Turboism サイト",
-      "sponsor": "支援"
+      "sponsor": "赞助",
+      "about": "关于"
     },
     "ko": {
       "home": "홈",
@@ -81,7 +75,21 @@
       "download": "다운로드",
       "menu": "탐색 및 언어",
       "nav": "Turboism 사이트",
-      "sponsor": "후원"
+      "sponsor": "후원",
+      "about": "소개"
+    },
+    "ja": {
+      "home": "ホーム",
+      "docs": "ドキュメント",
+      "sdk": "SDK",
+      "plugins": "プラグイン",
+      "learn": "学ぶ",
+      "thanks": "謝辞",
+      "download": "ダウンロード",
+      "menu": "ナビゲーションと言語",
+      "nav": "Turboism サイト",
+      "sponsor": "支援",
+      "about": "概要"
     }
   },
   "socials": [

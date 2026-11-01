@@ -1,0 +1,316 @@
+---
+turboismReadmeSchema: 1
+pluginId: dev.turboism.plugin.mcp
+version: 0.1.0
+kind: feature
+status: preview
+delivery: store-candidate
+category: integration
+tags: mcp, automation, external-tools
+turboismApi: "[0.1.0,0.2.0)"
+requiresCubism: true
+interface: swing
+---
+
+# Turboism MCP Server
+
+> **Official Turboism plugin** · **Status: Preview**
+
+Runs a token-gated MCP Streamable HTTP server on the local loopback interface, plus a stdio bridge so MCP clients need no credential handling.
+
+| Detail | Value |
+|---|---|
+| Version | `0.1.0` |
+| Plugin ID | `dev.turboism.plugin.mcp` |
+| Public catalog | 13 tools · 15 resources · 2 templates · 8 prompts |
+| Turboism API | `[0.1.0,0.2.0)` |
+| Requires Cubism | Yes |
+| Interface | `swing` |
+
+## What it does
+
+- Exposes typed, domain-level model-object, parameter, binding, history, and Editor-command tools.
+- Exposes active-document, model, workspace, Cubism Core, and sanitized runtime diagnostics as JSON resources.
+- Provides workflow prompts for inspection, diagnostics, editing, recovery, and bounded Editor automation.
+- Serves only loopback clients and enforces origin, body-size, protocol, session, and rate limits.
+- Gates mutating tool calls and session close behind a per-user bearer token that the stdio bridge supplies automatically.
+- Publishes a credential-free stdio launch descriptor (the running JVM's launcher, the plugin classpath, the bridge main class, and the state directory) through the runtime connection boundary, so bundled consumers such as the ACP plugin attach agents to a precompiled bridge without handling the token.
+
+## Requirements and compatibility
+
+- **Turboism API:** `[0.1.0,0.2.0)`.
+- **Cubism:** Turboism currently admits exact reviewed Editor artifacts `5.0.00` through `5.3.04`. A host-facing resource fails closed when its public SDK capability is unavailable; it never fabricates an empty success.
+- **Transport:** MCP Streamable HTTP using protocol `2025-11-25`, with compatibility negotiation for the supported earlier protocol versions.
+- **Interface mode:** `swing`, with a local connection-details window.
+- **Plugin dependencies:** None declared.
+
+<!-- compatibility:begin -->
+**Cubism Editor version support (generated):** all reviewed versions.
+- Top menu integration not on 5.0.00–5.0.06（earlier Cubism versions lack the feature entirely）
+- MCP editor command execution not on 5.0.00–5.0.06（earlier Cubism versions lack the feature entirely）
+Full matrix: [compatibility matrix](../../compatibility/cubism/plugins.md)
+<!-- compatibility:end -->
+
+## Install and enable
+
+1. Install and enable the plugin through Turboism's official release packaging and **Plugin Management**.
+2. Open **Turboism → MCP Connection**. This window shows the current local address and bounded process-local connection/request history.
+3. Copy the **Stdio client config** line into a local MCP client (recommended), or the HTTP **Address** into a direct-HTTP client. The default is `http://127.0.0.1:43123/mcp`. Stdio clients never see the token; direct-HTTP clients must send `Authorization: Bearer <token>` (contents of `mcp.token` in the plugin state directory) for mutating tool calls and session close.
+4. Keep the window open when diagnosing a client connection; use **Refresh** to load the newest history entries.
+5. Programmatic local consumers may still read the owner-protected `mcp-connection.json` from the per-user plugin state directory.
+6. Complete `initialize`, retain `MCP-Session-Id`, send `notifications/initialized`, and include the negotiated protocol version on later requests.
+
+Turboism binds the transport to loopback, rejects unsafe connection-file paths, verifies owner and file type, avoids following symbolic links, and uses owner-only permissions where the platform exposes them. The visible history never includes MCP session IDs and is discarded when the process exits.
+
+## How to use
+
+Connect a local MCP client with the configuration shown in **Turboism → MCP Connection**, initialize the session, then use the catalog below. Start with read resources and prompts; invoke write tools only after reviewing the requested operations and their permission scope.
+
+### Common coding agents
+
+**stdio (recommended)** — the plugin publishes `TurboismMcpBridge.java` next to `mcp.token` in its state directory; the bridge relays stdio frames to the loopback endpoint with the bearer token attached. Bundled in-process consumers such as the ACP plugin instead launch the precompiled bridge class shipped inside this plugin JAR with the state directory as an argument, which also works on JREs without `jdk.compiler`. The connection window shows the exact, copyable line:
+
+```json
+{
+  "mcpServers": {
+    "turboism": {
+      "command": "java",
+      "args": ["<plugin-state-dir>/TurboismMcpBridge.java"]
+    }
+  }
+}
+```
+
+**Claude Code (HTTP)**
+
+```bash
+claude mcp add --transport http turboism \
+  http://127.0.0.1:43123/mcp
+```
+
+Direct-HTTP clients keep working for read-only methods; mutating tool calls and session close also need the header `Authorization: Bearer <token>`, where `<token>` is the contents of `mcp.token` in the plugin state directory.
+
+Equivalent Claude Code JSON configuration:
+
+```json
+{
+  "mcpServers": {
+    "turboism": {
+      "type": "http",
+      "url": "http://127.0.0.1:43123/mcp"
+    }
+  }
+}
+```
+
+**Visual Studio Code**
+
+```json
+{
+  "servers": {
+    "turboism": {
+      "type": "http",
+      "url": "http://127.0.0.1:43123/mcp"
+    }
+  }
+}
+```
+
+**Codex CLI**
+
+Add:
+
+```toml
+[mcp_servers.turboism]
+url = "http://127.0.0.1:43123/mcp"
+```
+
+## Public MCP catalog
+
+### Tools
+
+| Tool | Purpose |
+|---|---|
+| `turboism.model_objects.apply` | Applies ordered create, rename, reparent, and delete operations. |
+| `turboism.parameters.apply` | Applies typed parameter value and definition operations. |
+| `turboism.parameter_bindings.apply` | Applies typed parameter-binding operations and native atomic transfers. |
+| `turboism.glues.read` | Lists or reads exact-version Glue authoring state. |
+| `turboism.glues.write` | Applies one Undo-aware Glue mutation. |
+| `turboism.textures.read` | Reads bounded texture-library metadata and a fresh state token. |
+| `turboism.textures.write` | Applies one guarded texture-library operation with standalone native Undo. |
+| `turboism.history.read` | Reads the immutable native Undo-history snapshot. |
+| `turboism.history.undo` | Performs guarded Undo with generation, revision, and optional entry identities. |
+| `turboism.history.redo` | Performs guarded Redo with generation, revision, and optional entry identities. |
+| `turboism.transaction.execute` | Groups eligible reads and Undo-aware writes into one authoring transaction. |
+| `turboism.capabilities.read` | Reads operation effects, version support, transaction eligibility, and SDK coverage. |
+| `turboism.editor_commands.execute` | Executes discoverable direct and typed non-file Editor commands. |
+
+The complete batch is checked against its input schema before the first write. A malformed later entry rejects the request without applying earlier entries. Valid-shaped batches can still partially succeed when a runtime operation fails; completed results are preserved and `stopOnError` controls subsequent execution. A native atomic sub-operation does not make the whole MCP batch a transaction.
+
+##### Write outcomes and inversion migration
+
+Confirmed parameter writes retain `outcome`, `retryable: false`, and their identity even when subsequent reads fail. A detail read failure returns `APPLIED_WITH_READBACK_WARNING`. If the optional final parameter snapshot fails, `parameters` is `null` and `parameterSnapshotWarning` explains why; completed `results` remain intact. Do not retry a confirmed write just because its readback is unavailable.
+
+The ambiguous parameter-binding operation `invert` is rejected before dispatch. To explicitly reverse **every normal keyform binding** on selected targets, use:
+
+```json
+{
+  "operations": [{
+    "operation": "invert_all_bindings",
+    "scope": "all_target_bindings",
+    "targets": [{"type": "art_mesh", "id": "ArtMesh1"}]
+  }]
+}
+```
+
+This is not single-parameter inversion and does not invert blend-shape bindings. The receipt includes the scope and affected parameter IDs; successful readback includes all affected normal bindings. A `parameterId` field is not accepted for this operation. Single-parameter inversion requires a separate verified provider contract.
+
+The three `*.apply` tools remain `transactionEligible: false`; `turboism.transaction.execute` rejects them before opening a transaction. This does not imply that their individual native operations lack Undo. `turboism.capabilities.read` exposes these temporary exceptions. Its coverage ledger now tracks thirteen explicitly listed SDK owners, including model-object, parameter, binding and texture APIs; it is not whole-SDK coverage. `MCP_LEGACY_WRITE` marks exposed legacy writes without claiming grouped transaction readiness. Empty `supportedVersions` on these added ledger rows means no exact-version claim is made by the ledger; actual provider admission still applies.
+
+### Texture-library authoring
+
+Call `turboism.textures.read` with `operation: "list"`, then pass its returned **`state` object**
+unchanged as `expectedState` to `turboism.textures.write`. The separate `stateToken` string is a
+read-correlation ID, not the write precondition or authorization. Re-read `state` after any write or history movement.
+
+The five operations cover exact **5.2.03 and 5.3.00–5.3.04**: `add_model_image_group` (`name`),
+`remove_model_image` (`id`), `add_texture_atlas` (`name`, `widthPixels`, `heightPixels`),
+`remove_texture_atlas` (`id`), and `remove_raw_image` (`id`). Every removal requires
+`confirmDelete: true`. Invalid arguments, duplicate group names and stale state are rejected before
+mutation. Groups have names, not invented GUIDs. Names and IDs are limited to 256 Unicode code
+points; atlas dimensions are 1–16384 pixels. Reads reject projections exceeding 1024 items per
+library collection or 1024 total nested model images instead of silently truncating them.
+Confirmed write receipts remain non-retryable even if observational readback fails: an unavailable
+`postState` is `null`, never a fabricated pre-write snapshot. An untyped native write exception
+returns `OUTCOME_UNKNOWN`, not a false `NOT_APPLIED`. Host exception messages are not exposed.
+Native history must be available before a guarded write is admitted.
+
+These writes have individual native Undo but remain `transactionEligible: false`.
+`MCP_WRITE_STANDALONE_UNDO` in the coverage ledger distinguishes them from grouped transaction children.
+Raw-image removal clears only the selected raw image and its input connections, retaining model
+images, ArtMeshes and atlases. Exact5.2 composes native Undo factories without opening a dialog.
+This is library CRUD, not arbitrary pixel upload, file import/export or MCP layout-plan application.
+Version metadata identifies runtime adapters and tests; exact-host acceptance is tracked separately
+and must not be inferred from a capability row or from synthetic tests alone.
+
+### Resources
+
+| Resource URI | Purpose |
+|---|---|
+| `turboism://active/document` | Active project, document, model, selection, workspace, and theme snapshot. |
+| `turboism://active/model/overview` | Compact active model and selection overview. |
+| `turboism://active/model/hierarchy` | Active model object hierarchy. |
+| `turboism://active/model/clip-masks` | Active model ArtMesh clip-mask records. |
+| `turboism://active/model/parameters` | Actual active-model parameter state. |
+| `turboism://active/model/statistics` | Structural, geometry, texture, mask, and optional offscreen counts. |
+| `turboism://active/model/textures` | Raw-image, model-image-group, and texture-atlas metadata without paths or bytes. |
+| `turboism://active/model/parameter-bindings` | Aggregated parameter-binding state for the active model. |
+| `turboism://active/document/history` | Native Undo availability, entries, generation, revision, and position. |
+| `turboism://environment/cubism-core` | Admitted Cubism Core version and public capability flags. |
+| `turboism://environment/workspace` | Current and available workspaces with typed availability. |
+| `turboism://environment/workspace/layout` | Ordered read-only dock-layout tree with typed availability. |
+| `turboism://environment/diagnostics` | Bounded, path-redacted Turboism startup diagnostic problems. |
+| `turboism://environment/runtime-diagnostics` | Recent bounded and sanitized MCP runtime outcomes. |
+| `turboism://host/editor-commands` | Currently available supported Editor commands and typed request schemas. |
+
+Resources are point-in-time snapshots. The server does not currently declare subscriptions or resource-update notifications.
+
+Workspace and layout resources may successfully return `availability: "UNAVAILABLE"` with a diagnostic code. That is a typed host state, distinct from JSON-RPC errors for permission denial (`-32001`), resource absence (`-32002`), unsupported capability (`-32003`), timeout (`-32004`), or cancellation (`-32800`).
+
+### Resource templates
+
+- `turboism://active/model/parameters/{parameterId}`
+- `turboism://active/model/parameters/{parameterId}/bindings`
+
+### Prompts
+
+- `inspect_active_document`
+- `edit_model_structure`
+- `normalize_parameters`
+- `repair_parameter_bindings`
+- `recover_document_history`
+- `run_editor_command`
+- `diagnose_environment`
+- `inspect_model_diagnostics`
+
+Prompts accept no arguments. The two diagnostic prompts explicitly prohibit mutations.
+
+## Capabilities
+
+| Capability | User effect |
+|---|---|
+| `mcp.streamable-http` | Serves token-gated MCP Streamable HTTP on numeric loopback (bearer required for mutating operations). |
+| `mcp.tools` | Publishes the thirteen typed tool workflows. |
+| `mcp.resources` | Publishes static and templated JSON resources. |
+| `mcp.prompts` | Publishes user-controlled workflow prompts. |
+| `cubism.workspace.read` | Reads typed workspace status and dock-layout snapshots. |
+| `cubism.model.objects.read` | Inspects supported model objects. |
+| `cubism.model.objects.write` | Creates, renames, reparents, and deletes supported model objects. |
+| `cubism.parameters.read` | Reads active-model parameters. |
+| `cubism.parameters.write` | Applies typed parameter value and definition operations. |
+| `cubism.parameter-bindings.read` | Reads parameter bindings. |
+| `cubism.parameter-bindings.write` | Applies typed binding operations and native atomic transfers. |
+| `cubism.history.read` | Reads native Undo history. |
+| `cubism.history.write` | Moves native Undo history with generation and revision guards. |
+| `cubism.editor-commands.execute` | Executes the bounded supported Editor-command surface. |
+
+## Permissions
+
+| Permission | Scope | Why it is requested |
+|---|---|---|
+| `turboism.cubism.model.read` | `application` | Reads active model objects, Core metadata, statistics, and texture metadata. |
+| `turboism.cubism.parameter.read` | `application` | Declares the parameter-read intent for tooling surfaces; parameter reads themselves are enforced at runtime by the model-read permission above. |
+| `turboism.cubism.project.read` | `application` | Reads active project, workspace, layout, and theme state. |
+| `turboism.cubism.model.write` | `application` | Applies typed model, parameter, binding, history, and model-setting writes. |
+| `turboism.file.read` | `application` | Verifies MCP connection-file metadata (existence, ownership, symlink checks) before publishing the loopback endpoint. |
+| `turboism.file.write` | `application` | Allows the direct Editor `SAVE` command and writes the owner-only loopback connection file under the MCP state directory. |
+| `turboism.network.fetch` | `application` | Allows the typed external-application settings command and binds the Origin-guarded loopback HTTP transport. |
+| `turboism.process.run` | `application` | Allows the typed external-application settings command. |
+| `turboism.mcp.connection.publish` | `application` | Publishes the active token-gated loopback endpoint to permission-approved automation plugins through the process-local runtime exchange. |
+| `turboism.action.register` | `application` | Registers the local MCP Connection window action. |
+| `turboism.ui.menu.contribute` | `application` | Adds **MCP Connection** to the Turboism menu. |
+
+The diagnostic expansion adds no `host.unsafe`, performance, file-read, config, event, or UI-mutation permission.
+
+## Privacy and data minimization
+
+### Network
+
+The server listens only on `127.0.0.1`. Requests require a loopback `Host` header (`127.0.0.1`, `localhost`, or `[::1]`, with an optional `:port`), an accepted loopback origin, a body no larger than 1 MiB, the negotiated MCP session/protocol headers, and the configured rate limit. Mutating tool calls and session close additionally require `Authorization: Bearer <token>` (contents of `mcp.token`); read-only methods need no credential. Set the system property `turboism.mcp.requireAuthForRead=true` to extend the bearer requirement to every `tools/call`, including read-effect tools. It is not designed for remote access.
+
+### Local data
+
+The plugin writes only its connection metadata, a per-user bearer token, and the stdio bridge source in plugin state storage, each with owner-only permissions. The bounded connection/request history is process-local and is not persisted. On POSIX systems it attempts owner-only permissions. Diagnostic and model resources do not expose raw filesystem paths, native host objects, or image bytes.
+
+`turboism://environment/diagnostics` omits `DiagnosticReport.Problem.path()`, bounds the problem list, converts messages to one line, caps message length, and redacts Unix paths, Windows paths, and `file:` URIs.
+
+### Telemetry
+
+No telemetry is sent by this plugin. Plugin lifecycle and failure records can appear in Turboism's session log and Cubism's host log with the plugin ID attached.
+
+## Status and limitations
+
+- **Status:** Preview.
+- The stable default port is `43123`. Set `turboism.mcp.port=0` explicitly for an ephemeral port. `turboism.mcp.requestsPerMinute` is the advanced rate-limit system-property override. `turboism.mcp.requireAuthForRead` (`true`/`false`, default `false`) gates read-effect `tools/call` methods behind the bearer token as well.
+- GET SSE, resource subscriptions, list-changed notifications, progress notifications, and MCP Tasks are not implemented.
+- Workspace switching and default-layout mutation are intentionally unavailable because the runtime currently gates them with `turboism.host.unsafe`.
+- `EditorFileCommandRequest`, import/export, save-as, backup, and other handle-based file workflows remain unavailable until an MCP session can receive a real `UserFileHandle` authorization without accepting raw paths.
+- Generic SDK invocation, reflection, arbitrary native members, shell execution, raw paths, dialog automation, and lifecycle-registration APIs are not exposed.
+- Performance sampling, canvas/profile, physics/animation, texture pixel ingestion and atlas-layout authoring through MCP, screenshots, and binary resources remain separate future capabilities. Texture-library CRUD is provided by the typed texture tools above.
+- Delete is destructive. The default rejects referenced objects; cascade must be requested explicitly.
+
+## Troubleshooting
+
+| Symptom | What to check |
+|---|---|
+| MCP client cannot connect | Open **Turboism → MCP Connection**, confirm the process is running, and use the exact displayed loopback address. If port `43123` is occupied, stop the conflicting process or set an explicit advanced port override. |
+| Request is rejected before dispatch | Check method, origin, session, MCP protocol version, body size, content type, and rate limit. |
+| Resource returns `UNAVAILABLE` | Check active document/model state and exact-host capability admission; do not treat it as an empty successful value. |
+| Resource returns permission denied | Check the plugin descriptor grant and the specific runtime permission named above. |
+
+## Support and license
+
+- **Project website:** [https://turboism.dev](https://turboism.dev)
+- **Publisher:** Turboism Contributors
+- **License:** Project License
+- **Plugin ID:** `dev.turboism.plugin.mcp`

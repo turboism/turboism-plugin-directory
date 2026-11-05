@@ -6,6 +6,10 @@
       "https://turboism.dev/"
     ],
     [
+      "features",
+      "https://turboism.dev/features"
+    ],
+    [
       "docs",
       "https://turboism.dev/docs"
     ],
@@ -41,6 +45,7 @@
   "labels": {
     "en": {
       "home": "Home",
+      "features": "Features",
       "docs": "Docs",
       "sdk": "SDK",
       "plugins": "Plugins",
@@ -54,6 +59,7 @@
     },
     "zh": {
       "home": "首页",
+      "features": "功能演示",
       "docs": "文档",
       "sdk": "SDK",
       "plugins": "插件",
@@ -67,6 +73,7 @@
     },
     "ko": {
       "home": "홈",
+      "features": "기능 데모",
       "docs": "문서",
       "sdk": "SDK",
       "plugins": "플러그인",
@@ -80,6 +87,7 @@
     },
     "ja": {
       "home": "ホーム",
+      "features": "機能デモ",
       "docs": "ドキュメント",
       "sdk": "SDK",
       "plugins": "プラグイン",

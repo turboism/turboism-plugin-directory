@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import navigation from './navigation.json';
 import { attachQQ, qqMarkup } from './qq.mjs';
 export type BrandLocale = 'en' | 'zh' | 'ja' | 'ko';
-export type BrandSite = 'home' | 'docs' | 'sdk' | 'plugins' | 'learn' | 'sponsor' | 'thanks' | 'download' | 'about';
+export type BrandSite = 'home' | 'features' | 'docs' | 'sdk' | 'plugins' | 'learn' | 'sponsor' | 'thanks' | 'download' | 'about';
 function BrandQQ({ locale }: { locale: BrandLocale }) {
   const root = useRef<HTMLSpanElement>(null);
   // React compares dangerouslySetInnerHTML by object identity and rewrites innerHTML whenever it changes, which would

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { deploymentBasePath } from "./base-path.mjs";
 import { defaultProductionDir } from "./catalog-v2/catalog.mjs";
 import { CATALOG_CACHE_CONTROL, loadVerifiedCurrentGeneration } from "./catalog-v2/http.mjs";
 import { loadPluginReadmes as loadPluginReadmesFromStorage } from "./catalog-v2/readme.mjs";
@@ -7,9 +8,13 @@ import {
   collectAvailableCategories,
   collectAvailableTags,
   filterPlugins,
+  formatFrameworkRequirement,
+  formatPluginVersionLabel,
+  frameworkFloorOf,
   normalizeCatalogLocale,
   projectCatalogToDirectory,
   resolveLocalizedPlugin,
+  selectRecommendedRelease,
   type CatalogLocale,
   type DirectorySnapshot,
   type LocalizedPluginText,
@@ -29,9 +34,13 @@ export {
   collectAvailableCategories,
   collectAvailableTags,
   filterPlugins,
+  formatFrameworkRequirement,
+  formatPluginVersionLabel,
+  frameworkFloorOf,
   normalizeCatalogLocale,
   projectCatalogToDirectory,
   resolveLocalizedPlugin,
+  selectRecommendedRelease,
   type CatalogLocale,
   type DirectorySnapshot,
   type LocalizedPluginText,
@@ -83,7 +92,8 @@ export function getDirectoryPlugins(storage?: DirectoryStorageOptions): PluginEn
 export type DirectoryListingEntry = Pick<PluginEntry,
   "id" | "slug" | "name" | "summary" | "localizations" | "trust" |
   "author" | "license" | "category" | "tags" | "latestVersion" |
-  "channel" | "downloadUrl" | "cubismVersions"
+  "channel" | "downloadUrl" | "cubismVersions" |
+  "recommendedVersion" | "recommendedChannel" | "recommendedDownloadUrl" | "frameworkFloor"
 >;
 
 export function getDirectoryListingPlugins(storage?: DirectoryStorageOptions): DirectoryListingEntry[] {
@@ -102,6 +112,10 @@ export function getDirectoryListingPlugins(storage?: DirectoryStorageOptions): D
     channel: plugin.channel,
     downloadUrl: plugin.downloadUrl,
     cubismVersions: plugin.cubismVersions,
+    recommendedVersion: plugin.recommendedVersion,
+    recommendedChannel: plugin.recommendedChannel,
+    recommendedDownloadUrl: plugin.recommendedDownloadUrl,
+    frameworkFloor: plugin.frameworkFloor,
   }));
 }
 
@@ -110,6 +124,23 @@ export function getDirectoryPluginBySlug(
   storage?: DirectoryStorageOptions,
 ): PluginEntry | undefined {
   return getDirectoryPlugins(storage).find((entry) => entry.slug === slug);
+}
+
+/**
+ * Reads one plugin together with the generation that owns its README files, so a
+ * detail page can serve per-version documentation without a second catalog load.
+ */
+export function getPluginDetail(
+  slug: string,
+  storage?: DirectoryStorageOptions,
+): { plugin: PluginEntry; readmeBasePath: string } | undefined {
+  const snapshot = loadDirectorySnapshot(storage);
+  const plugin = snapshot.plugins.find((entry) => entry.slug === slug);
+  if (!plugin) return undefined;
+  return {
+    plugin,
+    readmeBasePath: `${deploymentBasePath()}/api/v2/generations/${snapshot.generationId}/readmes/${plugin.id}`,
+  };
 }
 
 export function getPluginReadmes(

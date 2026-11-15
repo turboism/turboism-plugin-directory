@@ -64,6 +64,11 @@ export interface PluginEntry {
   tags: string[];
   latestVersion: string;
   channel: PluginChannel;
+  recommendedVersion: string;
+  recommendedChannel: PluginChannel;
+  recommendedDownloadUrl: string;
+  recommendedReleaseUrl: string;
+  frameworkFloor: string | null;
   publishedAt: string;
   turboismApi: string;
   requiresCubism: boolean;
@@ -122,6 +127,25 @@ export function projectCatalogToDirectory(
   catalog: RawCatalogV2,
   generationId?: string,
 ): DirectorySnapshot;
+
+/** Framework channel heads keyed by channel name, for example { stable: "0.67.4" }. */
+export type FrameworkChannelHeads = Record<string, string>;
+
+export interface FrameworkRequirement {
+  label: string;
+  kind: "stable" | "beta" | "nightly" | "unknown";
+}
+
+export function frameworkFloorOf(turboismApi: string | null | undefined): string | null;
+export function selectRecommendedRelease<T extends { version: string; channel: PluginChannel }>(
+  activeReleases: readonly T[],
+): T | null;
+export function formatPluginVersionLabel(version: string | null | undefined): string;
+export function formatFrameworkHeadLabel(version: string | null | undefined): string;
+export function formatFrameworkRequirement(
+  floor: string | null | undefined,
+  channelHeads?: FrameworkChannelHeads,
+): FrameworkRequirement | null;
 export function filterPlugins<T extends Pick<PluginEntry,
   "id" | "slug" | "name" | "summary" | "localizations" | "author" |
   "license" | "category" | "tags" | "latestVersion" | "cubismVersions"

@@ -9,6 +9,9 @@ import {
   collectAvailableCategories,
   collectAvailableTags,
   filterPlugins,
+  formatFrameworkRequirement,
+  formatPluginVersionLabel,
+  frameworkFloorOf,
   resolveLocalizedPlugin,
 } from "@/lib/directory-view.mjs";
 import { useLanguage } from "@/components/language-provider";
@@ -16,7 +19,31 @@ import { renderSafeReadmeMarkdown, selectLocalizedReadme } from "@/lib/readme-re
 
 const REPORT_URL = "https://github.com/turboism/turboism-plugin-directory/issues/new?template=directory-report.md";
 
-export function DirectoryBrowser({ plugins = [] }: { plugins?: DirectoryListingEntry[] }) {
+/** README file per documentation locale; mirrors the published generation layout. */
+const README_LOCALE_FILES: Record<string, string> = {
+  en: "README.md",
+  zh: "README_zh.md",
+  ja: "README_ja.md",
+  ko: "README_ko.md",
+};
+
+/** Maps a catalog locale onto the documentation locale used by README files. */
+function readmeLocaleOf(catalogLocale: string): string {
+  if (catalogLocale.startsWith("zh")) return "zh";
+  if (catalogLocale.startsWith("ja")) return "ja";
+  if (catalogLocale.startsWith("ko")) return "ko";
+  return "en";
+}
+
+export type FrameworkChannelHeads = Record<string, string>;
+
+export function DirectoryBrowser({
+  plugins = [],
+  frameworkChannels = {},
+}: {
+  plugins?: DirectoryListingEntry[];
+  frameworkChannels?: FrameworkChannelHeads;
+}) {
   const { copy, catalogLocale } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -252,7 +279,7 @@ export function DirectoryBrowser({ plugins = [] }: { plugins?: DirectoryListingE
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPlugins.map((plugin) => (
-              <PluginCard key={plugin.id} plugin={plugin} />
+              <PluginCard key={plugin.id} plugin={plugin} frameworkChannels={frameworkChannels} />
             ))}
           </div>
         )}
@@ -297,34 +324,54 @@ function EmptyDirectory({
 }
 
 // "5.0.00" .. "5.3.04" -> "5.0–5.3"; a single major.minor stays as-is.
-function formatCubismRange(plugin: DirectoryListingEntry): string | null {
-  if (plugin.cubismVersions.length === 0) return null;
-  const minors = [...new Set(plugin.cubismVersions.map((v) => v.split(".").slice(0, 2).join(".")))];
+function formatCubismRange(entry: { cubismVersions: string[] }): string | null {
+  if (entry.cubismVersions.length === 0) return null;
+  const minors = [...new Set(entry.cubismVersions.map((v) => v.split(".").slice(0, 2).join(".")))];
   return minors.length === 1 ? minors[0] : `${minors[0]}–${minors[minors.length - 1]}`;
 }
 
-function PluginCard({ plugin }: { plugin: DirectoryListingEntry }) {
+function PluginCard({
+  plugin,
+  frameworkChannels,
+}: {
+  plugin: DirectoryListingEntry;
+  frameworkChannels: FrameworkChannelHeads;
+}) {
   const { copy, catalogLocale } = useLanguage();
   const isOfficial = plugin.trust === "official";
   const localized = resolveLocalizedPlugin(plugin, catalogLocale);
   const categoryLabel = copy.categoryNames[plugin.category] ?? plugin.category;
   const cubismRange = formatCubismRange(plugin);
+  const requirement = formatFrameworkRequirement(plugin.frameworkFloor, frameworkChannels);
+  const requirementClass =
+    requirement?.kind === "stable" || requirement?.kind === "unknown"
+      ? "text-slate-700 bg-slate-100 border-slate-200"
+      : "text-violet-700 bg-violet-50 border-violet-200";
 
   return (
     <article className="group flex flex-col p-6 rounded-2xl border border-slate-200/80 bg-white/70 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-blue-200/80 transition-all">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-2">
-        <span
-          className="font-mono text-[11px] font-semibold whitespace-nowrap text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200"
-          title={copy.latestVersionLabel}
-        >
-          v{plugin.latestVersion} ({plugin.channel})
-        </span>
-        {cubismRange && (
+        {requirement && (
+          <span
+            className={`font-mono text-[11px] font-semibold whitespace-nowrap px-2 py-0.5 rounded border ${requirementClass}`}
+            title={copy.frameworkRequirementLabel}
+          >
+            {requirement.label}
+          </span>
+        )}
+        {cubismRange ? (
           <span
             className="font-mono text-[11px] font-semibold whitespace-nowrap text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200"
             title={copy.cubismVersionsLabel}
           >
             Cubism {cubismRange}
+          </span>
+        ) : (
+          <span
+            className="font-mono text-[11px] font-semibold whitespace-nowrap text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200"
+            title={copy.cubismVersionsLabel}
+          >
+            {copy.cubismAnyVersion}
           </span>
         )}
       </div>
@@ -365,7 +412,7 @@ function PluginCard({ plugin }: { plugin: DirectoryListingEntry }) {
           {copy.viewDetails}
         </Link>
         <a
-          href={plugin.downloadUrl}
+          href={plugin.recommendedDownloadUrl}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 text-white px-3.5 py-1.5 text-xs font-medium shadow-sm hover:bg-blue-700 transition-colors"
@@ -381,20 +428,55 @@ function PluginCard({ plugin }: { plugin: DirectoryListingEntry }) {
 export function PluginDetailView({
   plugin,
   readmes = {},
+  frameworkChannels = {},
+  readmeBasePath,
 }: {
   plugin: PluginEntry;
   readmes?: Record<string, string>;
+  frameworkChannels?: FrameworkChannelHeads;
+  readmeBasePath?: string;
 }) {
   const { copy, catalogLocale } = useLanguage();
   const isOfficial = plugin.trust === "official";
   const localized = resolveLocalizedPlugin(plugin, catalogLocale);
   const categoryLabel = copy.categoryNames[plugin.category] ?? plugin.category;
+  const requirement = formatFrameworkRequirement(plugin.frameworkFloor, frameworkChannels);
 
-  const { content: readmeContent } = selectLocalizedReadme(readmes, catalogLocale);
+  const [selectedVersion, setSelectedVersion] = useState(plugin.recommendedVersion);
+  const [versionReadmes, setVersionReadmes] = useState<Record<string, string> | null>(null);
+  const [readmeFailed, setReadmeFailed] = useState(false);
+
+  const activeReadmes = versionReadmes ?? readmes;
+  const { content: readmeContent } = selectLocalizedReadme(activeReadmes, catalogLocale);
   const readmeHtml = useMemo(
     () => (readmeContent ? renderSafeReadmeMarkdown(readmeContent, plugin.repository) : ""),
     [readmeContent, plugin.repository],
   );
+
+  const selectVersion = async (version: string) => {
+    if (version === selectedVersion) return;
+    setSelectedVersion(version);
+    setReadmeFailed(false);
+    if (version === plugin.recommendedVersion || !readmeBasePath) {
+      setVersionReadmes(null);
+      return;
+    }
+    const locale = readmeLocaleOf(catalogLocale);
+    // A version may ship without the visitor's language; English is the documented fallback.
+    const candidates = locale === "en" ? ["en"] : [locale, "en"];
+    for (const candidate of candidates) {
+      try {
+        const response = await fetch(`${readmeBasePath}/${version}/${README_LOCALE_FILES[candidate]}`);
+        if (!response.ok) continue;
+        setVersionReadmes({ [candidate]: await response.text() });
+        return;
+      } catch {
+        // Try the next documentation locale.
+      }
+    }
+    setVersionReadmes({});
+    setReadmeFailed(true);
+  };
 
   return (
     <div className="flex flex-col min-h-screen pt-24 pb-16">
@@ -419,8 +501,20 @@ export function PluginDetailView({
             {categoryLabel} ({plugin.category})
           </Link>
           <span className="text-slate-300">·</span>
-          <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-            v{plugin.latestVersion} ({plugin.channel})
+          {requirement && (
+            <span
+              className={`font-mono text-xs font-semibold px-2 py-0.5 rounded border ${
+                requirement.kind === "stable" || requirement.kind === "unknown"
+                  ? "text-slate-700 bg-slate-100 border-slate-200"
+                  : "text-violet-700 bg-violet-50 border-violet-200"
+              }`}
+              title={copy.frameworkRequirementLabel}
+            >
+              {requirement.label}
+            </span>
+          )}
+          <span className="font-mono text-xs font-semibold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+            {formatPluginVersionLabel(plugin.recommendedVersion)}
           </span>
         </div>
 
@@ -481,8 +575,14 @@ export function PluginDetailView({
               {copy.latestVersionLabel}
             </dt>
             <dd className="text-slate-900 font-mono text-sm">
-              v{plugin.latestVersion} ({plugin.channel})
+              {formatPluginVersionLabel(plugin.recommendedVersion)}
             </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+              {copy.frameworkRequirementLabel}
+            </dt>
+            <dd className="text-slate-900 font-mono text-sm">{requirement ? requirement.label : "-"}</dd>
           </div>
           <div>
             <dt className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest mb-1.5">
@@ -559,6 +659,85 @@ export function PluginDetailView({
           </div>
         </dl>
 
+        {plugin.releases.length > 0 && (
+          <section className="mb-10" aria-label={copy.versionHistoryLabel}>
+            <h2 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest mb-3">
+              {copy.versionHistoryLabel}
+            </h2>
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white/60">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200/80 text-left text-[11px] font-mono font-bold uppercase tracking-widest text-slate-400">
+                    <th className="px-4 py-2.5">{copy.versionColumnLabel}</th>
+                    <th className="px-4 py-2.5">{copy.channelLabel}</th>
+                    <th className="px-4 py-2.5">{copy.frameworkRequirementLabel}</th>
+                    <th className="px-4 py-2.5">{copy.cubismVersionsLabel}</th>
+                    <th className="px-4 py-2.5">{copy.publishedColumnLabel}</th>
+                    <th className="px-4 py-2.5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {plugin.releases.map((release) => {
+                    const releaseRequirement = formatFrameworkRequirement(
+                      frameworkFloorOf(release.turboismApi),
+                      frameworkChannels,
+                    );
+                    const isRecommended = release.version === plugin.recommendedVersion;
+                    const isSelected = release.version === selectedVersion;
+                    return (
+                      <tr
+                        key={release.version}
+                        className={`border-b border-slate-100 last:border-0 ${isSelected ? "bg-blue-50/50" : ""}`}
+                      >
+                        <td className="px-4 py-2.5 font-mono whitespace-nowrap text-slate-900">
+                          <button
+                            type="button"
+                            onClick={() => void selectVersion(release.version)}
+                            aria-pressed={isSelected}
+                            className="inline-flex items-center gap-1.5 hover:text-blue-600 focus-visible:outline-none focus-visible:underline cursor-pointer"
+                          >
+                            v{release.version}
+                            {isRecommended && (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">
+                                {copy.recommendedLabel}
+                              </span>
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-slate-600 whitespace-nowrap">
+                          {release.channel}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-slate-700">
+                          {releaseRequirement ? releaseRequirement.label : "-"}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-slate-600 whitespace-nowrap">
+                          {release.requiresCubism && release.cubismVersions.length > 0
+                            ? formatCubismRange(release)
+                            : copy.cubismIndependent}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-slate-500 whitespace-nowrap">
+                          {release.publishedAt.slice(0, 10)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                          <a
+                            href={release.downloadUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            <Download size={12} />
+                            {copy.downloadJar}
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
         {plugin.permissions.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest mb-3">
@@ -603,7 +782,7 @@ export function PluginDetailView({
 
         <div className="flex flex-wrap items-center gap-4">
           <a
-            href={plugin.downloadUrl}
+            href={plugin.recommendedDownloadUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 text-white px-8 py-4 text-lg font-medium shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2"
@@ -612,7 +791,7 @@ export function PluginDetailView({
             {copy.downloadJar}
           </a>
           <a
-            href={plugin.releaseUrl}
+            href={plugin.recommendedReleaseUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/80 text-slate-700 px-6 py-4 text-base font-medium hover:border-blue-300 hover:text-blue-600 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2"
@@ -620,6 +799,12 @@ export function PluginDetailView({
             {copy.viewRelease} <ArrowUpRight size={18} />
           </a>
         </div>
+
+        {readmeFailed && (
+          <p className="mt-8 rounded-xl border border-amber-200/70 bg-amber-50/60 px-4 py-3 text-sm text-amber-800">
+            {copy.readmeUnavailable}
+          </p>
+        )}
 
         {readmeHtml ? (
           <section className="mt-14 pt-10 border-t border-slate-200/80" aria-label="Plugin documentation">

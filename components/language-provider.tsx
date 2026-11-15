@@ -44,6 +44,7 @@ export type Copy = {
   latestVersionLabel: string;
   cubismVersionsLabel: string;
   cubismIndependent: string;
+  cubismAnyVersion: string;
   sha256Label: string;
   downloadJar: string;
   viewRelease: string;
@@ -67,6 +68,13 @@ export type Copy = {
   licenseFilterLabel: string;
   permissionsLabel: string;
   dependenciesLabel: string;
+  frameworkRequirementLabel: string;
+  previewOnlyLabel: string;
+  versionHistoryLabel: string;
+  versionColumnLabel: string;
+  publishedColumnLabel: string;
+  recommendedLabel: string;
+  readmeUnavailable: string;
   categoryNames: Record<string, string>;
 };
 
@@ -109,6 +117,7 @@ const copy: Record<Language, Copy> = {
     latestVersionLabel: "최신 버전",
     cubismVersionsLabel: "지원 Cubism 버전",
     cubismIndependent: "Cubism 버전 무관",
+    cubismAnyVersion: "Cubism 버전 무관",
     sha256Label: "SHA-256",
     downloadJar: "JAR 다운로드",
     viewRelease: "GitHub 릴리스",
@@ -132,6 +141,13 @@ const copy: Record<Language, Copy> = {
     licenseFilterLabel: "라이선스",
     permissionsLabel: "권한",
     dependenciesLabel: "의존성",
+    frameworkRequirementLabel: "필요한 Turboism 버전",
+    previewOnlyLabel: "프리뷰",
+    versionHistoryLabel: "버전 기록",
+    versionColumnLabel: "버전",
+    publishedColumnLabel: "배포일",
+    recommendedLabel: "권장",
+    readmeUnavailable: "이 버전의 문서를 불러올 수 없습니다.",
     categoryNames: {
       modeling: "모델링",
       workflow: "워크플로",
@@ -181,6 +197,7 @@ const copy: Record<Language, Copy> = {
     latestVersionLabel: "Latest version",
     cubismVersionsLabel: "Supported Cubism versions",
     cubismIndependent: "Editor-independent",
+    cubismAnyVersion: "Any Cubism version",
     sha256Label: "SHA-256",
     downloadJar: "Download JAR",
     viewRelease: "GitHub Release",
@@ -204,6 +221,13 @@ const copy: Record<Language, Copy> = {
     licenseFilterLabel: "License",
     permissionsLabel: "Permissions",
     dependenciesLabel: "Dependencies",
+    frameworkRequirementLabel: "Required Turboism version",
+    previewOnlyLabel: "Preview",
+    versionHistoryLabel: "Version history",
+    versionColumnLabel: "Version",
+    publishedColumnLabel: "Published",
+    recommendedLabel: "Recommended",
+    readmeUnavailable: "Documentation is unavailable for this version.",
     categoryNames: {
       modeling: "Modeling",
       workflow: "Workflow",
@@ -253,6 +277,7 @@ const copy: Record<Language, Copy> = {
     latestVersionLabel: "最新版本",
     cubismVersionsLabel: "支持的 Cubism 版本",
     cubismIndependent: "不依赖特定 Cubism 版本",
+    cubismAnyVersion: "不限 Cubism 版本",
     sha256Label: "SHA-256 校验和",
     downloadJar: "下载 JAR",
     viewRelease: "GitHub Release",
@@ -276,6 +301,13 @@ const copy: Record<Language, Copy> = {
     licenseFilterLabel: "许可证",
     permissionsLabel: "声明权限",
     dependenciesLabel: "插件依赖",
+    frameworkRequirementLabel: "需要的 Turboism 版本",
+    previewOnlyLabel: "预览版",
+    versionHistoryLabel: "版本历史",
+    versionColumnLabel: "版本",
+    publishedColumnLabel: "发布日期",
+    recommendedLabel: "推荐",
+    readmeUnavailable: "此版本文档暂不可用。",
     categoryNames: {
       modeling: "建模",
       workflow: "工作流",
@@ -325,6 +357,7 @@ const copy: Record<Language, Copy> = {
     latestVersionLabel: "最新バージョン",
     cubismVersionsLabel: "対応 Cubism バージョン",
     cubismIndependent: "Cubism バージョン非依存",
+    cubismAnyVersion: "Cubism バージョン不問",
     sha256Label: "SHA-256",
     downloadJar: "JAR をダウンロード",
     viewRelease: "GitHub リリース",
@@ -348,6 +381,13 @@ const copy: Record<Language, Copy> = {
     licenseFilterLabel: "ライセンス",
     permissionsLabel: "権限",
     dependenciesLabel: "依存関係",
+    frameworkRequirementLabel: "必要な Turboism バージョン",
+    previewOnlyLabel: "プレビュー",
+    versionHistoryLabel: "バージョン履歴",
+    versionColumnLabel: "バージョン",
+    publishedColumnLabel: "公開日",
+    recommendedLabel: "推奨",
+    readmeUnavailable: "このバージョンのドキュメントは利用できません。",
     categoryNames: {
       modeling: "モデリング",
       workflow: "ワークフロー",

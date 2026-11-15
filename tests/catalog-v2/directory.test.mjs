@@ -7,15 +7,19 @@ import {
   collectAvailableCategories,
   collectAvailableTags,
   filterPlugins,
+  formatFrameworkRequirement,
+  formatPluginVersionLabel,
+  frameworkFloorOf,
   getDirectoryPluginBySlug,
   getDirectoryPlugins,
   getDirectoryListingPlugins,
   loadDirectorySnapshot,
   normalizeCatalogLocale,
+  projectCatalogToDirectory,
   resolveLocalizedPlugin,
   serveLegacyPlugins,
 } from "../../lib/directory.ts";
-import { deployPair, makePopulatedDirectoryCatalog } from "./fixtures.mjs";
+import { deployPair, makeCatalog, makePlugin, makePopulatedDirectoryCatalog, makeRelease } from "./fixtures.mjs";
 
 function tempDir() {
   return mkdtempSync(path.join(tmpdir(), "catalog-v2-directory-"));
@@ -131,4 +135,82 @@ test("populated signed generation projects latest active releases, 5 locales wit
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("recommended release prefers stable over a newer preview and keeps the framework floor", () => {
+  const catalog = makeCatalog({
+    plugins: [
+      makePlugin({
+        id: "dev.turboism.plugin.mixed",
+        slug: "mixed",
+        releases: [
+          makeRelease({ version: "0.2.0", channel: "stable", turboismApi: "[0.67.0,1.0.0)" }),
+          makeRelease({ version: "0.3.0", channel: "preview", turboismApi: "[0.68.1,1.0.0)" }),
+        ],
+      }),
+    ],
+  });
+
+  const [entry] = projectCatalogToDirectory(catalog).plugins;
+  assert.equal(entry.latestVersion, "0.3.0");
+  assert.equal(entry.channel, "preview");
+  assert.equal(entry.recommendedVersion, "0.2.0");
+  assert.equal(entry.recommendedChannel, "stable");
+  assert.equal(entry.frameworkFloor, "0.67.0");
+});
+
+test("recommended release falls back to the newest preview when no stable release exists", () => {
+  const catalog = makeCatalog({
+    plugins: [
+      makePlugin({
+        id: "dev.turboism.plugin.preview-only",
+        slug: "preview-only",
+        releases: [
+          makeRelease({ version: "0.1.0", channel: "preview", turboismApi: "[0.67.0,1.0.0)" }),
+          makeRelease({ version: "0.2.0", channel: "preview", turboismApi: "[0.68.0,1.0.0)" }),
+        ],
+      }),
+    ],
+  });
+
+  const [entry] = projectCatalogToDirectory(catalog).plugins;
+  assert.equal(entry.recommendedVersion, "0.2.0");
+  assert.equal(entry.recommendedChannel, "preview");
+  assert.equal(entry.frameworkFloor, "0.68.0");
+});
+
+test("framework floor badge names the exact prerelease when no stable build provides the floor", () => {
+  const heads = { stable: "0.67.4", beta: "0.68.1-beta.11", nightly: "0.68.1-0.nightly.88" };
+
+  assert.equal(frameworkFloorOf("[0.67.0,1.0.0)"), "0.67.0");
+  assert.equal(frameworkFloorOf("0.68.1"), "0.68.1");
+  assert.equal(frameworkFloorOf("not-a-range"), null);
+
+  assert.deepEqual(formatFrameworkRequirement("0.67.0", heads), { label: "0.67.0+", kind: "stable" });
+  assert.deepEqual(formatFrameworkRequirement("0.68.1", heads), {
+    label: "0.68.1.b11",
+    kind: "beta",
+  });
+  assert.deepEqual(formatFrameworkRequirement("0.68.0", { stable: "0.67.4", beta: "0.68.1-beta.11" }), {
+    label: "0.68.1.b11",
+    kind: "beta",
+  });
+  assert.deepEqual(formatFrameworkRequirement("0.67.0", { nightly: "0.68.1-0.nightly.88" }), {
+    label: "0.68.1-0.nightly.88",
+    kind: "nightly",
+  });
+  // Unreachable channel metadata degrades to the plain floor instead of hiding the badge.
+  assert.deepEqual(formatFrameworkRequirement("0.68.1", {}), { label: "0.68.1+", kind: "unknown" });
+  assert.equal(formatFrameworkRequirement(null, heads), null);
+  assert.equal(frameworkFloorOf("[0.70.0,)"), "0.70.0");
+  assert.deepEqual(
+    formatFrameworkRequirement("0.70.0", { stable: "0.67.4", beta: "0.70.0-beta.1" }),
+    { label: "0.70.0.b1", kind: "beta" },
+  );
+});
+
+test("plugin version label renders plain version without channel suffix", () => {
+  assert.equal(formatPluginVersionLabel("0.67.4"), "0.67.4");
+  assert.equal(formatPluginVersionLabel("0.68.1"), "0.68.1");
+  assert.equal(formatPluginVersionLabel(""), "");
 });

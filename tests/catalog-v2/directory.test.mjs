@@ -19,6 +19,7 @@ import {
   resolveLocalizedPlugin,
   serveLegacyPlugins,
 } from "../../lib/directory.ts";
+import { withBasePath } from "../../lib/base-path.mjs";
 import { deployPair, makeCatalog, makePlugin, makePopulatedDirectoryCatalog, makeRelease } from "./fixtures.mjs";
 
 function tempDir() {
@@ -213,4 +214,70 @@ test("plugin version label renders plain version without channel suffix", () => 
   assert.equal(formatPluginVersionLabel("0.67.4"), "0.67.4");
   assert.equal(formatPluginVersionLabel("0.68.1"), "0.68.1");
   assert.equal(formatPluginVersionLabel(""), "");
+});
+
+test("directory view preserves reviewed-third-party trust, forwards permissions, filters by trust, and normalizes basePath", () => {
+  const dir = tempDir();
+  try {
+    const permissions = [
+      { id: "dev.turboism.permission.network", scope: "application", reason: "Sync presets over HTTPS." },
+    ];
+    const catalog = makeCatalog({
+      plugins: [
+        makePlugin({
+          id: "dev.turboism.plugin.core-helper",
+          slug: "core-helper",
+          name: "Core Helper",
+          trust: "official",
+          releases: [makeRelease({ version: "1.0.0", channel: "stable" })],
+        }),
+        makePlugin({
+          id: "com.example.mesh-sync",
+          slug: "mesh-sync",
+          name: "Mesh Sync",
+          trust: "reviewed-third-party",
+          releases: [makeRelease({ version: "0.4.0", channel: "stable", permissions })],
+        }),
+      ],
+    });
+    deployPair(dir, {
+      catalog,
+      keyId: "turboism-official-v1",
+      purpose: "production",
+      generationId: "00000001",
+    });
+    const storage = { dir, trustedKeysFile: path.join(dir, "trusted-keys.json") };
+
+    const detail = getDirectoryPluginBySlug("mesh-sync", storage);
+    assert.ok(detail);
+    assert.equal(detail.trust, "reviewed-third-party");
+    assert.deepEqual(detail.permissions, permissions);
+
+    const listing = getDirectoryListingPlugins(storage);
+    assert.equal(listing.find((p) => p.slug === "mesh-sync")?.trust, "reviewed-third-party");
+    assert.deepEqual(
+      filterPlugins(listing, "", null, null, "en", null, null, "official").map((p) => p.slug),
+      ["core-helper"],
+    );
+    assert.deepEqual(
+      filterPlugins(listing, "", null, null, "en", null, null, "reviewed-third-party").map((p) => p.slug),
+      ["mesh-sync"],
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  const prevBasePath = process.env.__NEXT_ROUTER_BASEPATH;
+  try {
+    process.env.__NEXT_ROUTER_BASEPATH = "/plugins";
+    assert.equal(withBasePath("/api/auth/session"), "/plugins/api/auth/session");
+    assert.equal(withBasePath("/plugins/submit"), "/plugins/submit");
+    assert.equal(withBasePath("/"), "/plugins");
+  } finally {
+    if (prevBasePath === undefined) {
+      delete process.env.__NEXT_ROUTER_BASEPATH;
+    } else {
+      process.env.__NEXT_ROUTER_BASEPATH = prevBasePath;
+    }
+  }
 });

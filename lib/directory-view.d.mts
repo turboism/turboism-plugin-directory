@@ -149,7 +149,7 @@ export function formatFrameworkRequirement(
 export function filterPlugins<T extends Pick<PluginEntry,
   "id" | "slug" | "name" | "summary" | "localizations" | "author" |
   "license" | "category" | "tags" | "latestVersion" | "cubismVersions"
->>(
+> & { trust?: PluginTrust }>(
   entries: readonly T[],
   query: string,
   selectedTag?: string | null,
@@ -157,4 +157,5 @@ export function filterPlugins<T extends Pick<PluginEntry,
   locale?: string,
   selectedAuthor?: string | null,
   selectedLicense?: string | null,
+  selectedTrust?: PluginTrust | null,
 ): T[];

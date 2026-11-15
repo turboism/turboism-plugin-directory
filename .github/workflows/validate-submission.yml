@@ -1,0 +1,51 @@
+name: Validate Plugin Submission
+
+on:
+  pull_request:
+    paths:
+      - "catalog/v2/submissions/**/*.json"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-submission:
+    name: Verify third-party submission manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dry-run verify changed submission manifests
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed_files="$(git diff --name-only --diff-filter=AM "$BASE_SHA" "$HEAD_SHA" -- 'catalog/v2/submissions/**/*.json')"
+          if [ -z "$changed_files" ]; then
+            echo "No added or modified submission manifests detected."
+            exit 0
+          fi
+          while IFS= read -r manifest_path; do
+            [ -z "$manifest_path" ] && continue
+            echo "Verifying submission manifest: $manifest_path"
+            node scripts/catalog-v2/ingest-submission.mjs \
+              --manifest "$manifest_path" \
+              --dry-run
+          done <<< "$changed_files"
+
+      - name: Run release checks
+        run: npm run release:check

@@ -467,11 +467,12 @@ test("publisher workflow static assertions: trigger, guard, permissions, environ
   assert.ok(stepBlocks.length >= 8, "expected the full step list");
   const publishBlock = stepBlocks.find((s) => s.name === "Publish the catalog/signature pair");
   assert.ok(publishBlock, "publish step must exist");
-  // Trigger structure: workflow_dispatch ONLY (no pull_request/push/schedule).
+  // Trigger structure: workflow_dispatch plus main-only submission push (never pull_request/schedule).
   const onBlock = workflow.match(/^on:\n((?:[ \t]+\S[^\n]*\n?)*)/m);
   assert.ok(onBlock, "on: trigger block must be present");
   assert.match(onBlock[1], /workflow_dispatch/);
-  assert.doesNotMatch(onBlock[1], /pull_request|push|schedule/);
+  assert.match(onBlock[1], /push:\n\s+branches: \[main\]\n\s+paths:\n\s+- "catalog\/v2\/submissions\/\*\*\/\*\.json"/);
+  assert.doesNotMatch(onBlock[1], /pull_request|schedule/);
   // Ref guard, signing environment, and bounded job timeout.
   assert.match(workflow, /github\.ref\s*!=\s*'refs\/heads\/main'/);
   assert.match(workflow, /environment:\s*catalog-signing/);
@@ -528,7 +529,7 @@ test("publisher workflow static assertions: trigger, guard, permissions, environ
   // for both the initial (all-untracked) and subsequent (tracked pointer
   // update) publication forms.
   const gatePatterns = [...workflow.matchAll(/-e '([^']*)'/g)].map((m) => m[1]);
-  assert.equal(gatePatterns.length, 2, "scope gate must filter both allowed roots");
+  assert.equal(gatePatterns.length, 3, "scope gate must filter all three allowed roots");
   const gateRe = new RegExp(gatePatterns.join("|"));
   const gateRejects = (porcelain) => porcelain.split("\n").filter((l) => l !== "").some((l) => !gateRe.test(l));
   // Initial publication: all-untracked pair under public/api/v2 is accepted.

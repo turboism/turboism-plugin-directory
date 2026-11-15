@@ -62,6 +62,10 @@ name: Publish Plugin Directory v2 catalog
 run-name: Publish Plugin Directory v2 catalog · request ${{ inputs.request_id || github.run_id }}
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "catalog/v2/submissions/**/*.json"
   workflow_dispatch:
     inputs:
       source_run_id:
@@ -202,6 +206,14 @@ jobs:
             --bundle "$RUNNER_TEMP/market-bundle-normalized.json" \
             --releases "$RUNNER_TEMP/market-releases.json"
 
+      - name: Sync merged third-party submissions
+        run: |
+          set -euo pipefail
+          node scripts/catalog-v2/sync-merged-submissions.mjs \
+            --submissions-dir catalog/v2/submissions \
+            --catalog catalog/v2/catalog.json \
+            --ownership catalog/v2/ownership.json
+
       - name: Hydrate the local JAR manifest
         env:
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
@@ -241,14 +253,14 @@ jobs:
           set -euo pipefail
           status="$(git status --porcelain --untracked-files=all)"
           if [ -n "$status" ]; then
-            bad="$(printf '%s\n' "$status" | grep -v -e '^.. public/api/v2/' -e '^.. catalog/v2/catalog.json$' || true)"
+            bad="$(printf '%s\n' "$status" | grep -v -e '^.. public/api/v2/' -e '^.. catalog/v2/catalog.json$' -e '^.. catalog/v2/ownership.json$' || true)"
             if [ -n "$bad" ]; then
               printf '%s\n' "$bad"
-              echo "working tree changed outside public/api/v2/ and catalog/v2/catalog.json"
+              echo "working tree changed outside public/api/v2/, catalog/v2/catalog.json, and catalog/v2/ownership.json"
               exit 1
             fi
           fi
-          echo "working tree changed only under public/api/v2/ and catalog/v2/catalog.json"
+          echo "working tree changed only under public/api/v2/, catalog/v2/catalog.json, and catalog/v2/ownership.json"
 
       - name: Check diff hygiene
         run: git diff --check
@@ -281,7 +293,7 @@ jobs:
             echo "catalog pair is already current; nothing to commit"
             exit 0
           fi
-          git add public/api/v2 catalog/v2/catalog.json
+          git add public/api/v2 catalog/v2/catalog.json catalog/v2/ownership.json
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
               commit -m 'chore(catalog-v2): publish signed catalog generation'

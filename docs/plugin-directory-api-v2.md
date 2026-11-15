@@ -140,7 +140,7 @@ Classification is release-owned in v2. A plugin object has no top-level `categor
 
 ### 5.2 Release and descriptor classification
 
-Every release is backed by a JAR whose `META-INF/turboism/plugin.json` has `schemaVersion: 3`.
+Every release is backed by a JAR whose `META-INF/turboism/plugin.json` has `schemaVersion` 3, 4, or 5.
 
 Required release fields include:
 
@@ -150,7 +150,7 @@ Required release fields include:
 - UTC `publishedAt`;
 - `category`: lowercase kebab-case, 2–32 characters;
 - `tags`: ordered, unique lowercase kebab-case values, each 2–32 characters, at most 12;
-- `turboismApi` using Turboism's exact/bounded half-open grammar;
+- `turboismApi` using Turboism's exact, bounded half-open `[a,b)`, or unbounded half-open `[a,)` grammar;
 - `requiresCubism`, `cubismVersions`, and `platforms`;
 - normalized dependencies and permissions;
 - `releaseUrl`, optional `sourceRevision`, and `artifact`.
@@ -176,7 +176,7 @@ Before publication, every release must be backed by a strictly inspected JAR. Th
 - JAR SHA-256 and byte length equal `artifact.sha256` and `artifact.size`;
 - exactly one `META-INF/turboism/plugin.json`;
 - descriptor SHA-256 equals `artifact.descriptorSha256`;
-- descriptor schema version is exactly 3;
+- descriptor schema version is 3, 4, or 5;
 - descriptor ID and version equal plugin ID and release version;
 - descriptor `turboismApi`, `environment.requiresCubism`, permissions, and dependencies agree with the release after documented default normalization;
 - release `category` equals descriptor category;

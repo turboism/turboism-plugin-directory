@@ -226,8 +226,9 @@ test("publishedAt rejects rollover, non-UTC, and garbage", () => {
   }
 });
 
-test("version range must be exact or half-open with a < b", () => {
-  for (const turboismApi of ["[1.0.0,1.0.0)", "[2.0.0,1.0.0)", "1.0", "(1.0.0,2.0.0)", "[1.0.0,2.0.0]"]) {
+test("version range must be exact, bounded [a,b) with a < b, or unbounded [a,)", () => {
+  ok(Buffer.from(JSON.stringify(makeCatalog({ plugins: [makePlugin({ releases: [makeRelease({ turboismApi: "[0.67.0,)" })] })] }))));
+  for (const turboismApi of ["[1.0.0,1.0.0)", "[2.0.0,1.0.0)", "1.0", "(1.0.0,2.0.0)", "[1.0.0,2.0.0]", "[,1.0.0)", "[01.0.0,)"]) {
     invalid(Buffer.from(JSON.stringify(makeCatalog({ plugins: [makePlugin({ releases: [makeRelease({ turboismApi })] })] }))));
   }
 });

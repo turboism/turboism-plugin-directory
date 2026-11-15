@@ -71,9 +71,9 @@ const DESCRIPTOR_SUBSET_KEYS = ["id", "version", "name", "description", "author"
 function subset(descriptor) {
   const out = {};
   for (const key of DESCRIPTOR_SUBSET_KEYS) out[key] = descriptor[key];
-  out.publishedEvents = descriptor.publishedEvents ?? [];
-  out.subscribedEvents = descriptor.subscribedEvents ?? [];
-  out.embeddedContracts = descriptor.embeddedContracts ?? [];
+  out.publishedEvents = descriptor.publishedEvents ?? descriptor.eventExports ?? [];
+  out.subscribedEvents = descriptor.subscribedEvents ?? descriptor.eventImports ?? [];
+  out.embeddedContracts = descriptor.embeddedContracts ?? descriptor.eventContracts ?? [];
   return out;
 }
 
@@ -716,6 +716,33 @@ test("validate-bundle accepts the canonical bundle and writes a normalized manif
       assert.equal(entry.asset, `${entry.module}-${entry.version}.jar`);
       assert.equal(entry.pluginId, entry.descriptor.id);
     }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("validate-bundle accepts schemaVersion 4 descriptors and unbounded [a,) turboismApi ranges", async () => {
+  const dir = tempDir();
+  try {
+    const schemaV4Artifact = {
+      module: "recent-preview",
+      descriptor: makeEmbeddedDescriptor({
+        schemaVersion: 4,
+        id: "dev.turboism.plugin.recent-preview",
+        version: "0.68.0",
+        name: "Recent Preview Plugin",
+        turboismApi: "[0.70.0,)",
+        eventExports: [{ id: "thumbnail.deleted", contractVersion: "1.0.0", eventType: "dev.turboism.sdk.cubism.recentpreview.RecentPreviewDeletedEvent" }],
+      }),
+      policy: makePolicy(),
+      localizations: makeLocalizations("Recent Preview Plugin", "recent preview"),
+    };
+    const bundle = buildBundle(dir, [schemaV4Artifact]);
+    const outFile = path.join(dir, "normalized-v4.json");
+    const result = await runIngest(["validate-bundle", "--expected-revision", SOURCE_SHA, "--sidecar", bundle.sidecarPath, "--bundle-dir", bundle.bundleDir, "--out", outFile]);
+    assert.ok(result.ok, result.stderr);
+    const normalized = JSON.parse(readFileSync(outFile, "utf8"));
+    assert.equal(normalized.artifacts[0].descriptor.turboismApi, "[0.70.0,)");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

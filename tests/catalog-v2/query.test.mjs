@@ -196,6 +196,26 @@ test("turboismApi range filter (exact and half-open)", () => {
   assert.ok(!parsed.ok);
 });
 
+test("turboismApi range filter admits unbounded [a,) intervals", () => {
+  const catalog = makeCatalog({
+    plugins: [
+      makePlugin({
+        id: "dev.turboism.plugin.unbounded",
+        slug: "unbounded",
+        releases: [makeRelease({ version: "0.70.0", turboismApi: "[0.67.0,)" })],
+      }),
+    ],
+  });
+  const search = (api) => {
+    const parsed = parseQuery(new URLSearchParams(`turboismApi=${api}`));
+    assert.ok(parsed.ok);
+    return runSearch(catalog, parsed.query).items.map((item) => item.id);
+  };
+  assert.deepEqual(search("0.66.9"), []);
+  assert.deepEqual(search("0.67.0"), ["dev.turboism.plugin.unbounded"]);
+  assert.deepEqual(search("1.0.0"), ["dev.turboism.plugin.unbounded"]);
+});
+
 test("cubismVersion matches only Cubism-bound releases that list the exact Editor release", () => {
   assert.deepEqual(ids("cubismVersion=5.3.02"), ["dev.third.plugin.mocap-suite", "dev.turboism.plugin.project-inspector", "dev.turboism.plugin.mat-painter", "dev.acme.plugin.palette-helper", "dev.third.plugin.light-studio", "dev.turboism.plugin.rig-poser", "dev.turboism.plugin.auto-lipsync"]);
   // A different Editor release excludes the Cubism-bound plugin but not the rest.

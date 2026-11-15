@@ -87,13 +87,20 @@ test("descriptor id and version mismatches fail binding", () => {
   }
 });
 
-test("descriptor schemaVersion other than 3 fails binding", () => {
+test("descriptor schemaVersion outside 3-5 fails binding and schema 4-5 with unbounded API succeed", () => {
   const dir = tempDir();
   try {
-    const { jarPath, artifact } = deployJar(dir, { descriptorOverrides: { schemaVersion: 2 } });
-    const bound = checkJarBinding(jarPath, makeRelease({ artifact }), "dev.turboism.plugin.project-inspector");
-    assert.ok(!bound.ok);
-    assert.ok(bound.errors.some((issue) => issue.message.includes("exactly 3")));
+    for (const unsupported of [2, 6]) {
+      const { jarPath, artifact } = deployJar(dir, { descriptorOverrides: { schemaVersion: unsupported } });
+      const bound = checkJarBinding(jarPath, makeRelease({ artifact }), "dev.turboism.plugin.project-inspector");
+      assert.ok(!bound.ok);
+      assert.ok(bound.errors.some((issue) => issue.path === "descriptor.schemaVersion"));
+    }
+    for (const schemaVersion of [4, 5]) {
+      const { jarPath, artifact } = deployJar(dir, { descriptorOverrides: { schemaVersion, turboismApi: "[0.70.0,)" } });
+      const bound = checkJarBinding(jarPath, makeRelease({ artifact, turboismApi: "[0.70.0,)" }), "dev.turboism.plugin.project-inspector");
+      assert.ok(bound.ok, JSON.stringify(bound.errors));
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

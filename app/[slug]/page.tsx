@@ -25,7 +25,7 @@ export default async function PluginDetailPage({ params }: { params: Promise<{ s
   const detail = getPluginDetail(slug);
   if (!detail) notFound();
 
-  const { plugin, readmeBasePath } = detail;
+  const { plugin, readmeBasePath, dependencyPlugins } = detail;
   const frameworkChannels = await loadFrameworkChannelHeads();
   const readmes = getPluginReadmes(plugin.id, plugin.recommendedVersion);
 
@@ -35,6 +35,7 @@ export default async function PluginDetailPage({ params }: { params: Promise<{ s
       readmes={readmes}
       frameworkChannels={frameworkChannels}
       readmeBasePath={readmeBasePath}
+      dependencyPlugins={dependencyPlugins}
     />
   );
 }

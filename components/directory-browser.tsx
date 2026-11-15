@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { DirectoryListingEntry, PluginEntry, PluginTrust } from "@/lib/directory";
+import type { DependencyPluginTarget, DirectoryListingEntry, PluginEntry, PluginTrust } from "@/lib/directory";
 import {
   collectAvailableCategories,
   collectAvailableTags,
@@ -71,7 +71,6 @@ export function DirectoryBrowser({
   frameworkChannels?: FrameworkChannelHeads;
 }) {
   const { copy, catalogLocale } = useLanguage();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const authorParam = searchParams.get("author") || null;
@@ -85,6 +84,12 @@ export function DirectoryBrowser({
   const [tagsOpen, setTagsOpen] = useState(false);
   const query = userQuery ?? qParam;
 
+  const pushQueryParams = (params: URLSearchParams) => {
+    const qs = params.toString();
+    const pathname = window.location.pathname;
+    window.history.pushState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  };
+
   const updateParam = (key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) {
@@ -92,12 +97,11 @@ export function DirectoryBrowser({
     } else {
       params.delete(key);
     }
-    const qs = params.toString();
-    router.push(qs ? `/?${qs}` : "/", { scroll: false });
+    pushQueryParams(params);
   };
 
   const clearAllFilters = () => {
-    router.push("/", { scroll: false });
+    pushQueryParams(new URLSearchParams());
     setUserQuery("");
   };
 
@@ -560,11 +564,13 @@ export function PluginDetailView({
   readmes = {},
   frameworkChannels = {},
   readmeBasePath,
+  dependencyPlugins = {},
 }: {
   plugin: PluginEntry;
   readmes?: Record<string, string>;
   frameworkChannels?: FrameworkChannelHeads;
   readmeBasePath?: string;
+  dependencyPlugins?: Record<string, DependencyPluginTarget>;
 }) {
   const { copy, catalogLocale } = useLanguage();
   const isOfficial = plugin.trust === "official";
@@ -573,6 +579,7 @@ export function PluginDetailView({
   const requirement = formatFrameworkRequirement(plugin.frameworkFloor, frameworkChannels);
 
   const [selectedVersion, setSelectedVersion] = useState(plugin.recommendedVersion);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [versionReadmes, setVersionReadmes] = useState<Record<string, string> | null>(null);
   const [readmeFailed, setReadmeFailed] = useState(false);
 
@@ -581,6 +588,7 @@ export function PluginDetailView({
     [plugin.releases, selectedVersion],
   );
   const activePermissions = activeRelease?.permissions ?? plugin.permissions;
+  const activeDependencies = activeRelease?.dependencies ?? plugin.dependencies;
 
   const activeReadmes = versionReadmes ?? readmes;
   const { content: readmeContent } = selectLocalizedReadme(activeReadmes, catalogLocale);
@@ -840,123 +848,147 @@ export function PluginDetailView({
 
         {plugin.releases.length > 0 && (
           <section className="mb-10" aria-label={copy.versionHistoryLabel}>
-            <h2 className="text-xs font-mono font-bold text-[var(--tb-muted)] uppercase tracking-widest mb-3">
-              {copy.versionHistoryLabel}
-            </h2>
-            <div className="overflow-x-auto rounded-xl border border-[var(--tb-border)] bg-white">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--tb-border)] text-left text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--tb-muted)]">
-                    <th className="px-4 py-2.5">{copy.versionColumnLabel}</th>
-                    <th className="px-4 py-2.5">{copy.channelLabel}</th>
-                    <th className="px-4 py-2.5">{copy.frameworkRequirementLabel}</th>
-                    <th className="px-4 py-2.5">{copy.cubismVersionsLabel}</th>
-                    <th className="px-4 py-2.5">{copy.publishedColumnLabel}</th>
-                    <th className="px-4 py-2.5" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {plugin.releases.map((release) => {
-                    const releaseRequirement = formatFrameworkRequirement(
-                      frameworkFloorOf(release.turboismApi),
-                      frameworkChannels,
-                    );
-                    const isRecommended = release.version === plugin.recommendedVersion;
-                    const isSelected = release.version === selectedVersion;
-                    return (
-                      <tr
-                        key={release.version}
-                        className={`border-b border-[var(--tb-border)]/60 last:border-0 ${isSelected ? "bg-[var(--tb-soft)]/70" : ""}`}
-                      >
-                        <td className="px-4 py-2.5 font-mono whitespace-nowrap text-[var(--tb-ink)]">
-                          <button
-                            type="button"
-                            onClick={() => void selectVersion(release.version)}
-                            aria-pressed={isSelected}
-                            className="inline-flex items-center gap-1.5 hover:text-[var(--tb-violet)] focus-visible:outline-none focus-visible:underline cursor-pointer"
-                          >
-                            v{release.version}
-                            {isRecommended && (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--tb-violet)]">
-                                {copy.recommendedLabel}
-                              </span>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-[var(--tb-muted)] whitespace-nowrap">
-                          {release.channel}
-                        </td>
-                        <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-[var(--tb-ink)]">
-                          {releaseRequirement ? releaseRequirement.label : "-"}
-                        </td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-[var(--tb-muted)] whitespace-nowrap">
-                          {release.requiresCubism && release.cubismVersions.length > 0
-                            ? formatCubismRange(release)
-                            : copy.cubismIndependent}
-                        </td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-[var(--tb-muted)] whitespace-nowrap">
-                          {release.publishedAt.slice(0, 10)}
-                        </td>
-                        <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                          <a
-                            href={release.downloadUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--tb-violet)] hover:text-[var(--tb-deep)] transition-colors"
-                          >
-                            <Download size={12} />
-                            {copy.downloadJar}
-                          </a>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <button
+              type="button"
+              aria-expanded={versionHistoryOpen}
+              aria-controls="plugin-version-history"
+              onClick={() => setVersionHistoryOpen((open) => !open)}
+              className="w-full flex items-center justify-between gap-3 rounded-xl border border-[var(--tb-border)] bg-white px-4 py-3 text-left hover:border-[var(--tb-violet)]/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tb-violet)]/40 cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-[var(--tb-muted)] uppercase tracking-widest">
+                  {copy.versionHistoryLabel}
+                </span>
+                <span className="rounded-full bg-[var(--tb-soft)] px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--tb-violet)]">
+                  {plugin.releases.length}
+                </span>
+              </span>
+              <span className="flex items-center gap-2 font-mono text-xs text-[var(--tb-muted)]">
+                <span>v{selectedVersion}</span>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform ${versionHistoryOpen ? "rotate-180" : ""}`}
+                />
+              </span>
+            </button>
+            {versionHistoryOpen && (
+              <div
+                id="plugin-version-history"
+                className="mt-3 overflow-x-auto rounded-xl border border-[var(--tb-border)] bg-white"
+              >
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--tb-border)] text-left text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--tb-muted)]">
+                      <th className="px-4 py-2.5">{copy.versionColumnLabel}</th>
+                      <th className="px-4 py-2.5">{copy.channelLabel}</th>
+                      <th className="px-4 py-2.5">{copy.frameworkRequirementLabel}</th>
+                      <th className="px-4 py-2.5">{copy.cubismVersionsLabel}</th>
+                      <th className="px-4 py-2.5">{copy.publishedColumnLabel}</th>
+                      <th className="px-4 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plugin.releases.map((release) => {
+                      const releaseRequirement = formatFrameworkRequirement(
+                        frameworkFloorOf(release.turboismApi),
+                        frameworkChannels,
+                      );
+                      const isRecommended = release.version === plugin.recommendedVersion;
+                      const isSelected = release.version === selectedVersion;
+                      return (
+                        <tr
+                          key={release.version}
+                          className={`border-b border-[var(--tb-border)]/60 last:border-0 ${isSelected ? "bg-[var(--tb-soft)]/70" : ""}`}
+                        >
+                          <td className="px-4 py-2.5 font-mono whitespace-nowrap text-[var(--tb-ink)]">
+                            <button
+                              type="button"
+                              onClick={() => void selectVersion(release.version)}
+                              aria-pressed={isSelected}
+                              className="inline-flex items-center gap-1.5 hover:text-[var(--tb-violet)] focus-visible:outline-none focus-visible:underline cursor-pointer"
+                            >
+                              v{release.version}
+                              {isRecommended && (
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--tb-violet)]">
+                                  {copy.recommendedLabel}
+                                </span>
+                              )}
+                            </button>
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-xs text-[var(--tb-muted)] whitespace-nowrap">
+                            {release.channel}
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-[var(--tb-ink)]">
+                            {releaseRequirement ? releaseRequirement.label : "-"}
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-xs text-[var(--tb-muted)] whitespace-nowrap">
+                            {release.requiresCubism && release.cubismVersions.length > 0
+                              ? formatCubismRange(release)
+                              : copy.cubismIndependent}
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-xs text-[var(--tb-muted)] whitespace-nowrap">
+                            {release.publishedAt.slice(0, 10)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                            <a
+                              href={release.downloadUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--tb-violet)] hover:text-[var(--tb-deep)] transition-colors"
+                            >
+                              <Download size={12} />
+                              {copy.downloadJar}
+                            </a>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         )}
 
-        {plugin.dependencies.length > 0 && (
+        {activeDependencies.length > 0 && (
           <div className="mb-10">
             <h2 className="text-xs font-mono font-bold text-[var(--tb-muted)] uppercase tracking-widest mb-3">
               {copy.dependenciesLabel}
             </h2>
             <ul className="space-y-2">
-              {plugin.dependencies.map((dep) => (
-                <li
-                  key={dep.id}
-                  className="text-sm bg-white rounded-xl border border-[var(--tb-border)] px-4 py-2.5 flex flex-col md:flex-row md:items-center md:justify-between gap-1"
-                >
-                  <code className="font-mono text-xs text-[var(--tb-ink)]">
-                    {dep.id} {dep.version} ({dep.type})
-                  </code>
-                  {dep.reason && <span className="text-[var(--tb-muted)] text-xs">{dep.reason}</span>}
-                </li>
-              ))}
+              {activeDependencies.map((dep) => {
+                const depTarget = dependencyPlugins[dep.id];
+                const depName = depTarget
+                  ? resolveLocalizedPlugin(
+                      { name: depTarget.name, summary: "", localizations: depTarget.localizations },
+                      catalogLocale,
+                    ).name
+                  : null;
+                return (
+                  <li
+                    key={dep.id}
+                    className="text-sm bg-white rounded-xl border border-[var(--tb-border)] px-4 py-2.5 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      {depTarget && depName ? (
+                        <Link
+                          href={`/${depTarget.slug}`}
+                          className="font-semibold text-[var(--tb-violet)] hover:text-[var(--tb-deep)] hover:underline transition-colors"
+                        >
+                          {depName}
+                        </Link>
+                      ) : null}
+                      <code className="font-mono text-xs text-[var(--tb-muted)]">
+                        {dep.id} {dep.version} ({dep.type})
+                      </code>
+                    </div>
+                    {dep.reason && <span className="text-[var(--tb-muted)] text-xs">{dep.reason}</span>}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
-
-        <div className="flex flex-wrap items-center gap-4">
-          <a
-            href={plugin.recommendedDownloadUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--tb-violet)] text-white px-8 py-4 text-lg font-medium shadow-sm hover:bg-[var(--tb-deep)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tb-violet)]/60 focus-visible:ring-offset-2"
-          >
-            <Download size={20} />
-            {copy.downloadJar}
-          </a>
-          <a
-            href={plugin.recommendedReleaseUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--tb-border)] bg-white text-[var(--tb-ink)] px-6 py-4 text-base font-medium hover:border-[var(--tb-violet)] hover:text-[var(--tb-violet)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tb-violet)]/60 focus-visible:ring-offset-2"
-          >
-            {copy.viewRelease} <ArrowUpRight size={18} />
-          </a>
-        </div>
 
         {readmeFailed && (
           <p className="mt-8 rounded-xl border border-amber-200/70 bg-amber-50/60 px-4 py-3 text-sm text-amber-800">

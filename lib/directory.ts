@@ -126,6 +126,12 @@ export function getDirectoryPluginBySlug(
   return getDirectoryPlugins(storage).find((entry) => entry.slug === slug);
 }
 
+export interface DependencyPluginTarget {
+  slug: string;
+  name: string;
+  localizations: PluginLocalizations;
+}
+
 /**
  * Reads one plugin together with the generation that owns its README files, so a
  * detail page can serve per-version documentation without a second catalog load.
@@ -133,13 +139,34 @@ export function getDirectoryPluginBySlug(
 export function getPluginDetail(
   slug: string,
   storage?: DirectoryStorageOptions,
-): { plugin: PluginEntry; readmeBasePath: string } | undefined {
+):
+  | {
+      plugin: PluginEntry;
+      readmeBasePath: string;
+      dependencyPlugins: Record<string, DependencyPluginTarget>;
+    }
+  | undefined {
   const snapshot = loadDirectorySnapshot(storage);
   const plugin = snapshot.plugins.find((entry) => entry.slug === slug);
   if (!plugin) return undefined;
+
+  const byId = new Map(snapshot.plugins.map((entry) => [entry.id, entry]));
+  const dependencyPlugins: Record<string, DependencyPluginTarget> = {};
+  for (const dep of [...plugin.dependencies, ...plugin.releases.flatMap((release) => release.dependencies)]) {
+    if (dependencyPlugins[dep.id]) continue;
+    const target = byId.get(dep.id);
+    if (!target) continue;
+    dependencyPlugins[dep.id] = {
+      slug: target.slug,
+      name: target.name,
+      localizations: target.localizations,
+    };
+  }
+
   return {
     plugin,
     readmeBasePath: `${deploymentBasePath()}/api/v2/generations/${snapshot.generationId}/readmes/${plugin.id}`,
+    dependencyPlugins,
   };
 }
 

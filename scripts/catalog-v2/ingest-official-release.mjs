@@ -156,7 +156,8 @@ const DEFAULT_SOURCE_REPO = "turboism/Turboism";
 const DEFAULT_PUBLIC_REPO = "turboism/turboism-plugin-directory";
 // Artifact zips redirect to GitHub's signed result storage; the account index varies per
 // request, so every documented productionresultssa<N> host is approved (exact names only).
-const GITHUB_ARTIFACT_BLOB_HOSTS = Array.from({ length: 20 }, (_, index) => `productionresultssa${index}.blob.core.windows.net`);
+const GITHUB_ARTIFACT_BLOB_SHARD_COUNT = 100;
+const GITHUB_ARTIFACT_BLOB_HOSTS = Array.from({ length: GITHUB_ARTIFACT_BLOB_SHARD_COUNT }, (_, index) => `productionresultssa${index}.blob.core.windows.net`);
 const GITHUB_API_REDIRECT_HOSTS = ["pipelines.actions.githubusercontent.com", ...GITHUB_ARTIFACT_BLOB_HOSTS];
 const GITHUB_RELEASE_REDIRECT_HOSTS = ["release-assets.githubusercontent.com"];
 const GITHUB_UPLOAD_HOST = "uploads.github.com";

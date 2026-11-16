@@ -189,7 +189,12 @@ function extractCookiePairs(response) {
     const firstPart = headerValue.split(";")[0];
     const eqIdx = firstPart.indexOf("=");
     if (eqIdx > 0) {
-      map[firstPart.slice(0, eqIdx).trim()] = firstPart.slice(eqIdx + 1).trim();
+      const name = firstPart.slice(0, eqIdx).trim();
+      const value = firstPart.slice(eqIdx + 1).trim();
+      // A clearing header carries an empty value; keep the real value when both appear.
+      if (value.length > 0 || map[name] === undefined) {
+        map[name] = value;
+      }
     }
   }
   return map;
@@ -708,6 +713,29 @@ test("preflight and submit routes verify JAR on server, block CSRF, and open sub
   const mineJson = await mineRes.json();
   assert.equal(mineJson.prIntegrationConfigured, true);
   assert.equal(mineJson.submissions[0].number, 42);
+});
+
+test("login clears the legacy /plugins session cookie so the host-wide session wins", async () => {
+  const devEnv = {
+    NODE_ENV: "development",
+    ALLOW_DEV_MOCK_AUTH: "1",
+    PUBLIC_APP_ORIGIN: "http://localhost:3000",
+  };
+  const loginRes = await handleAuthGitHubLogin(
+    new Request("http://localhost:3000/plugins/api/auth/github/login?returnTo=/plugins/submit"),
+    { env: devEnv },
+  );
+  assert.equal(loginRes.status, 302);
+  const setCookies = loginRes.headers.getSetCookie();
+  const legacyClear = setCookies.find(
+    (value) => value.startsWith(`${SESSION_COOKIE_NAME}=;`) && value.includes("Path=/plugins;"),
+  );
+  assert.ok(legacyClear, "login must clear the pre-migration cookie scoped to /plugins");
+  assert.ok(legacyClear.includes("Max-Age=0"));
+  const hostWide = setCookies.find(
+    (value) => value.startsWith(`${SESSION_COOKIE_NAME}=v1.`) && value.includes("Path=/;"),
+  );
+  assert.ok(hostWide, "login must issue the host-wide session cookie");
 });
 
 test("dev mock mode completes login, preflight, and simulated PR without GitHub secrets", async () => {

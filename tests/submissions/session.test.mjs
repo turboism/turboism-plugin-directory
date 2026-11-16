@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import {
   AUTH_COOKIE_PATH,
   OAUTH_FLOW_COOKIE_NAME,
+  OAUTH_FLOW_COOKIE_PATH,
   SESSION_COOKIE_NAME,
   clearAuthCookie,
   createOAuthPkcePair,
@@ -129,7 +130,7 @@ test("resolvePublicOrigin prefers PUBLIC_APP_ORIGIN and permits only trusted pro
   );
 });
 
-test("serializeAuthCookie and parseCookieHeader enforce host-only Path=/plugins HttpOnly SameSite=Lax", () => {
+test("serializeAuthCookie and parseCookieHeader enforce host-only HttpOnly SameSite=Lax cookies", () => {
   const cookie = serializeAuthCookie(SESSION_COOKIE_NAME, "abc.def.ghi", {
     origin: "https://turboism.dev",
     maxAgeSeconds: 3600,
@@ -150,4 +151,15 @@ test("serializeAuthCookie and parseCookieHeader enforce host-only Path=/plugins 
     [OAUTH_FLOW_COOKIE_NAME]: "tok1",
     [SESSION_COOKIE_NAME]: "tok2",
   });
+});
+
+test("the session cookie spans the apex host while the OAuth flow cookie stays under /plugins", () => {
+  const sessionCookie = serializeAuthCookie(SESSION_COOKIE_NAME, "abc.def.ghi", { origin: "https://turboism.dev" });
+  assert.ok(sessionCookie.includes("Path=/;"));
+
+  const flowCookie = serializeAuthCookie(OAUTH_FLOW_COOKIE_NAME, "abc.def.ghi", {
+    origin: "https://turboism.dev",
+    path: OAUTH_FLOW_COOKIE_PATH,
+  });
+  assert.ok(flowCookie.includes(`Path=${OAUTH_FLOW_COOKIE_PATH};`));
 });

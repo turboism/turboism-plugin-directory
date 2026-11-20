@@ -1,0 +1,127 @@
+---
+turboismReadmeSchema: 1
+pluginId: dev.turboism.plugin.recent-preview
+version: 0.68.0
+kind: feature
+status: preview
+delivery: store-candidate
+category: workflow
+tags: recent-files, preview, navigation
+turboismApi: "[0.70.0,)"
+requiresCubism: true
+interface: swing
+---
+# ìµê·¼ ë¯¸ë¦¬ë³´ê¸°
+
+> **Turboism 公式プラグイン** · **ステータス: プレビュー**
+
+サイズが制限されたサムネイルをキャプチャし、Cubism の Recent Files ホバーポップアップに表示します。
+
+| 세부 정보 | 값 |
+|---|---|
+| 버전 | `0.68.0` |
+| 플러그인 ID | `dev.turboism.plugin.recent-preview` |
+| カテゴリー | `workflow` |
+| 태그 | recent-files, preview, navigation |
+| Cubism 필요 여부 | 예 |
+| 인터페이스 | `swing` |
+| 라이선스 | 프로젝트 라이선스 |
+
+## 기능 개요
+
+- 지원되는 프로젝트 열기 또는 저장 작업 후 최대 300×300의 모델링 표면 미리보기를 캡처하고 기존 팝업 크기 안에 표시합니다.
+- 実行中および変更のないキャプチャを重複排除し、キャッシュ済みのコンテンツを Recent Files のホバー UI に提供します。
+- 不透明な最近使用したファイル ID と、パスを含まないキャッシュインデックスを使用します。
+
+## 요구 사항 및 호환성
+
+- **SDK API 範囲:** `[0.70.0,)`。
+- **Cubism:** Cubism が必要です。Turboism は現在、正確にレビュー済みの Editor アーティファクト `5.0.00` から `5.3.04` を受け入れています。このプラグインは、宣言されたサービスと機能が利用可能な場合にのみ、各ホスト向け機能を公開します。
+- **インターフェースモード:** `swing`。
+- **プラグイン依存関係:** 宣言されていません。
+
+<!-- compatibility:begin -->
+**Cubism Editor 버전 지원(자동 생성):** 검토된 모든 버전(5.0.00–5.0.06, 5.1.00–5.1.03, 5.2.00–5.2.03, 5.3.00–5.3.04, 정확한 버전 20개).
+전체 기능(검토된 버전): 5.0.00–5.0.06, 5.1.00–5.1.03, 5.2.00–5.2.03, 5.3.00–5.3.04.
+전체 매트릭스: [compatibility matrix](../../compatibility/cubism/plugins_ko.md)
+<!-- compatibility:end -->
+
+## 설치 및 활성화
+
+この公式プラグインは**ストア候補**であり、まだ公開済みのストア掲載ではありません。マーケットプレイスで公開されるまで、Turboism の公式リリースパッケージからインストールし、**Plugin Management** で有効にしてください。このワークフローが不要な場合は、同じウィンドウから無効化またはアンインストールしてください。
+
+## 사용 방법
+
+1. プラグインが有効な状態で Cubism プロジェクトを開くか保存します。
+2. Cubism の Recent Files 表示を開き、最近使用した項目にカーソルを合わせます。
+3. ポップアップにキャッシュ済みのサムネイルと利用可能な表示メタデータが表示されます。古い、または利用できないキャプチャは安全にスキップされます。
+
+## 플러그인 간 이벤트 계약
+
+이 플러그인은 공개 이벤트 두 개(각 계약 `1.0.0`)를 내보냅니다.
+
+- `thumbnail.captured`: SDK 소유 페이로드 `RecentPreviewCapturedEvent`에는 불투명 최근 파일 ID, 표시 이름, 캡처된 `ScreenshotImage`, 바로 사용할 수 있는 썸네일 `PanelView`가 포함됩니다.
+- `thumbnail.deleted`: SDK 소유 페이로드 `RecentPreviewDeletedEvent`는 불투명 최근 파일 ID만 포함하며 캐시된 썸네일 삭제를 알립니다.
+
+소비 플러그인은 `dev.turboism.plugin.recent-preview`에 대한 의존성(`ordering: after`)과 이벤트 가져오기를 선언하고 `turboism.event.subscribe` 권한을 추가합니다. `@SubscribeEvent` 또는 `context.eventBus().subscribe(RecentPreviewCapturedEvent.class, ...)`로 구독합니다. `event.image().png()`는 이미지 스트림, `event.thumbnail()`은 `PanelView` 부품을 제공합니다. 이벤트는 실시간 전용이며 캡처 후 구독을 시작한 플러그인에 과거 이미지를 재생하지 않습니다.
+
+## 기능
+
+플러그인 매니페스트에 선언된 기능이 없습니다.
+
+プラグインマニフェストには機能は宣言されていません。
+
+## 권한
+
+| 권한 | 범위 | 요청 이유 |
+|---|---|---|
+| `turboism.cubism.model.observe` | `application` | モデルのオープン/保存ライフサイクルコールバックを受け取り、範囲を制限したプレビューキャプチャを起動します。未宣言の場合、ライフサイクルレジストリがこれらをフィルタリングします。 |
+| `turboism.cubism.recent-file.read` | `application` | 不透明なファイル ID をプレビューキャッシュのキーとして使用するため、ホストの Recent Files プロジェクションを一覧表示します。 |
+| `turboism.ui.viewport.read` | `application` | 最近使用したファイル用に、サイズが制限されたモデリングサーフェスのプレビューサムネイルをキャプチャします。 |
+| `turboism.ui.recent-preview.contribute` | `application` | ホストの Recent Files ホバーブリッジにサムネイルポップアップのコンテンツを提供します。 |
+| `turboism.file.read` | `application` | プラグインに限定されたキャッシュストレージから、キャッシュ済みプレビュー PNG を読み取ります。 |
+| `turboism.file.write` | `application` | プレビュー PNG とパスを含まないインデックスを、プラグインに限定されたキャッシュストレージへアトミックに書き込みます。 |
+| `turboism.event.publish` | `application` | 공개 `thumbnail.captured`/`thumbnail.deleted` 이벤트를 가져온 종속 플러그인에 커밋된 썸네일과 삭제 결과를 게시합니다. |
+
+## 개인정보 및 데이터
+
+### 네트워크
+
+네트워크 연결을 수행하지 않습니다.
+
+### 로컬 데이터
+
+プラグインキャッシュパス `recent-preview/images/` および `recent-preview/index/` の下に、サイズが制限された PNG サムネイルとパスを含まないインデックスエントリーを保存します。キーは不透明な最近使用したファイル ID から導出された SHA-256 値です。インデックスエントリーには意図的にファイルパスが含まれません。ディスクキャッシュは、外部からキャッシュデータを削除するまで無効化後も残ります。
+
+### 원격 측정ー
+
+このプラグインはテレメトリーを送信しません。
+
+プラグイン ID が付加されたプラグインのライフサイクル記録と障害記録が、Turboism のセッションログおよび Cubism のホストログに記録されることがあります。
+
+## 상태 및 제한 사항
+
+- **ステータス:** プレビュー。
+- 最近使用したファイル、ビューポートスクリーンショット、および最近のプレビュー拡張サービスが必要です。
+- キャプチャは非同期でサイズが制限されています。プロジェクトの変更、古い ID、無効な PNG、または利用できないビューポートがあると、結果はスキップされます。
+
+## 문제 해결
+
+| 증상 | 확인 사항 |
+|---|---|
+| ホバーポップアップにサムネイルがない | プロジェクトを開くか保存してキャプチャを待ち、ビューポートと最近使用したファイルのサービスが利用可能であることを確認してください。 |
+| 古いサムネイルが残る | プロジェクトを再度開くか保存して調整を実行してください。無効または古いキャッシュエントリーは無視されます。 |
+| キャッシュが増大する | Turboism のストレージ管理でこのプラグインのキャッシュを消去するか、Turboism を停止中にプラグインキャッシュを削除してください。 |
+
+## 변경 이력
+
+### 0.1.0
+
+- 초회 릴리스.
+
+## 지원 및 라이선스
+
+- **プロジェクトウェブサイト:** [https://turboism.dev](https://turboism.dev)
+- **게시자:** Turboism Contributors
+- **라이선스:** 프로젝트 라이선스
+- **플러그인 ID:** `dev.turboism.plugin.recent-preview`

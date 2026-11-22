@@ -1,0 +1,287 @@
+---
+turboismReadmeSchema: 1
+pluginId: dev.turboism.plugin.mcp
+version: 0.1.0
+kind: feature
+status: preview
+delivery: store-candidate
+category: integration
+tags: mcp, automation, external-tools
+turboismApi: "[0.67.1,1.0.0)"
+requiresCubism: true
+interface: swing
+---
+
+# Turboism MCP 服务器
+
+> **Turboism 官方插件** · **状态：预览**
+
+在本地回环接口上运行令牌门控的 MCP Streamable HTTP 服务器；stdio 桥接器会自动携带令牌。
+
+| 详情 | 值 |
+|---|---|
+| 版本 | `0.1.0` |
+| 插件 ID | `dev.turboism.plugin.mcp` |
+| 公开目录 | 11 个工具 · 15 个资源 · 2 个模板 · 8 个提示词 |
+| 需要 Cubism | 是 |
+| 接口 | `swing` |
+
+## 功能概述
+
+- 公开类型化、领域级的模型对象、参数、绑定、历史记录和 Editor 命令工具。
+- 将活动文档、模型、工作区、Cubism Core 和经净化的运行时诊断公开为 JSON 资源。
+- 为检查、诊断、编辑、恢复和有界的 Editor 自动化提供工作流提示词。
+- 仅服务回环客户端，并强制实施来源、正文大小、协议、会话和速率限制。
+- 通过运行时连接边界发布免凭据 stdio 启动描述符（当前 JVM 启动器、插件 classpath、桥接主类、状态目录），使 ACP 等捆绑消费方无需接触令牌即可将 Agent 挂接到预编译桥接。
+
+## 要求与兼容性
+
+- **SDK API 范围：** `[0.67.1,1.0.0)`。
+- **Cubism：** Turboism 当前仅接受经过审查的精确 Editor 构件 `5.0.00` 至 `5.3.04`。面向宿主的资源在其公开 SDK 能力不可用时会以关闭状态失败；它绝不会伪造空的成功结果。
+- **传输：** 使用协议 `2025-11-25` 的 MCP Streamable HTTP，并为受支持的较早协议版本进行兼容性协商。
+- **接口模式：** `swing`，提供本地 MCP 连接信息窗口。
+- **插件依赖项：** 未声明。
+
+<!-- compatibility:begin -->
+**Cubism Editor 版本支持（自动生成）：** 全部审核版本.
+- 顶部菜单集成 不适用于 5.0.00–5.0.06（更早版本 Cubism 本身无此功能）
+- MCP 编辑器命令执行 不适用于 5.0.00–5.0.06（更早版本 Cubism 本身无此功能）
+完整矩阵: [compatibility matrix](../../compatibility/cubism/plugins_zh.md)
+<!-- compatibility:end -->
+
+## 安装与启用
+
+1. 通过 Turboism 的官方发布包和**插件管理**安装并启用插件。
+2. 打开 **Turboism → MCP 连接**。该窗口集中显示当前本地地址以及有界的进程内连接/请求历史。
+3. 将 **stdio 客户端配置** 行复制到本地 MCP 客户端（推荐），或将 HTTP **地址** 复制到直连 HTTP 客户端。默认地址为 `http://127.0.0.1:43123/mcp`。stdio 客户端无需感知令牌；直连 HTTP 客户端进行写操作工具调用或关闭会话时，必须携带 `Authorization: Bearer <令牌>`（即插件状态目录中 `mcp.token` 的内容）。
+4. 排查连接时可保持窗口打开，并点击**刷新**读取最新历史记录。
+5. 程序化本地使用者仍可读取每用户插件状态目录中受所有者权限保护的 `mcp-connection.json`。
+6. 完成 `initialize`，保留 `MCP-Session-Id`，发送 `notifications/initialized`，并在后续请求中包含协商后的协议版本。
+
+服务器只绑定回环接口，连接文件仍使用所有者权限保护。可见历史不会包含 MCP 会话 ID，并会在进程退出时丢弃。
+
+## 使用方法
+
+使用 **Turboism → MCP 连接** 中显示的配置连接本地客户端；经 stdio 桥接时无需额外认证配置。
+
+### 常见编码智能体
+
+**Claude Code**
+
+```bash
+claude mcp add --transport http turboism \
+  http://127.0.0.1:43123/mcp
+```
+
+等价的 Claude Code JSON 配置：
+
+```json
+{
+  "mcpServers": {
+    "turboism": {
+      "type": "http",
+      "url": "http://127.0.0.1:43123/mcp"
+    }
+  }
+}
+```
+
+**Visual Studio Code**
+
+```json
+{
+  "servers": {
+    "turboism": {
+      "type": "http",
+      "url": "http://127.0.0.1:43123/mcp"
+    }
+  }
+}
+```
+
+**Codex CLI**
+
+添加：
+
+```toml
+[mcp_servers.turboism]
+url = "http://127.0.0.1:43123/mcp"
+```
+
+### 公开 MCP 目录
+
+#### 工具
+
+| 工具 | 用途 |
+|---|---|
+| `turboism.model_objects.apply` | 应用有序的创建、重命名、重新设定父级和删除操作。 |
+| `turboism.parameters.apply` | 应用类型化的参数值和定义操作。 |
+| `turboism.parameter_bindings.apply` | 应用类型化的参数绑定操作和原生原子传输。 |
+| `turboism.glues.read` | 列出或读取精确版本路由的 Glue 创作状态。 |
+| `turboism.glues.write` | 应用一次带原生撤销能力的 Glue 修改。 |
+| `turboism.textures.read` | 读取有数量上限的纹理库元数据和当前状态前置条件。 |
+| `turboism.textures.write` | 执行一次受状态校验保护、支持独立原生撤销的纹理库操作。 |
+| `turboism.history.read` | 读取不可变的原生撤销历史快照。 |
+| `turboism.history.undo` | 使用世代、修订版本及可选条目标识执行受保护的撤销。 |
+| `turboism.history.redo` | 使用世代、修订版本及可选条目标识执行受保护的重做。 |
+| `turboism.transaction.execute` | 将符合条件的读取和可撤销写入组合为一个创作事务。 |
+| `turboism.capabilities.read` | 读取操作效果、版本支持、事务资格和 SDK 覆盖账本。 |
+| `turboism.editor_commands.execute` | 执行可发现的直接 Editor 命令和类型化的非文件 Editor 命令。 |
+
+整个批次会在首次写入前完成输入 Schema 检查。后面的条目存在格式错误时，前面的条目也不会执行。格式正确的批次仍可能因运行时失败而部分成功；已完成结果会保留，`stopOnError` 决定是否继续执行。单个原生子操作的原子性不代表整个 MCP 批次具有事务性。
+
+##### 写入结果与反转操作迁移
+
+已确认的参数写入会保留 `outcome`、`retryable: false` 和对象身份，不会被后续回读失败覆盖。详情回读失败返回 `APPLIED_WITH_READBACK_WARNING`；可选的最终参数快照失败时，`parameters` 为 `null`，并附带 `parameterSnapshotWarning`，已完成的 `results` 不会丢失。不要因为回读不可用而重试已确认的写入。
+
+含义不明确的参数绑定操作 `invert` 已被禁止，且会在写入前拒绝。显式反转目标对象的**全部普通关键形绑定**应使用：
+
+```json
+{
+  "operations": [{
+    "operation": "invert_all_bindings",
+    "scope": "all_target_bindings",
+    "targets": [{"type": "art_mesh", "id": "ArtMesh1"}]
+  }]
+}
+```
+
+该操作不是单参数反转，也不反转混合形状绑定。结果包含操作范围和受影响的参数 ID；回读成功时还包含全部受影响的普通绑定。不接受 `parameterId` 字段。单参数反转需要独立的、已验证的 Provider 契约。
+
+三个 `*.apply` 工具仍为 `transactionEligible: false`，`turboism.transaction.execute` 会在开启事务前拒绝它们。这不表示单个原生操作没有 Undo。`turboism.capabilities.read` 会公开这些临时例外。覆盖账本现在跟踪明确列出的十三个 SDK 类型，包括模型对象、参数、绑定和纹理接口，但不声称覆盖整个 SDK。`MCP_LEGACY_WRITE` 表示已公开的旧式写入，不代表已具备分组事务能力；新增账本行中空的 `supportedVersions` 表示账本未作精确版本声明，实际运行仍受 Provider 准入控制。
+
+#### 纹理库创作
+
+先调用 `turboism.textures.read`，参数为 `{"operation":"list"}`，再把返回的 **`state` 对象** 原样放入写入请求的 `expectedState`。另一个 `stateToken` 字符串仅用于关联本次读取，不是写入前置条件或授权令牌。写入或撤销／重做后应重新读取状态；原生历史不可用时拒绝写入。
+
+适配范围为精确版本 `5.2.03 / 5.3.00–5.3.04`，操作包括 `add_model_image_group`（`name`）、`remove_model_image`（`id`）、`add_texture_atlas`（`name`、`widthPixels`、`heightPixels`）、`remove_texture_atlas`（`id`）和 `remove_raw_image`（`id`）。所有删除都必须显式传入 `confirmDelete: true`。模型图像组使用名称，不伪造 GUID；重名创建会在修改前拒绝。
+
+名称和 ID 上限为 256 个 Unicode 码点，图集每边尺寸为 1–16384 像素。读取时，每个顶层集合最多 1024 项，嵌套模型图像总数最多 1024；超限返回错误而非静默截断。成功写入后的回读失败保留结果标识，返回 `APPLIED_WITH_READBACK_WARNING` 和 `postState: null`。无法证明结果的原生异常返回 `OUTCOME_UNKNOWN`，不会误称 `NOT_APPLIED`，也不会建议自动重试或泄露宿主异常中的路径。
+
+这些操作有独立原生 Undo，但 `transactionEligible` 仍为 `false`；覆盖账本使用 `MCP_WRITE_STANDALONE_UNDO` 区分它们与可加入分组事务的操作。删除原始图像仅处理指定原始图像及其输入连接，保留模型图像、ArtMesh 和图集；5.2 的实现组合原生 Undo 操作，不调用删除对话框。
+
+这是纹理库增删，不是像素上传、任意文件导入导出或通过 MCP 应用图集布局。版本元数据说明运行时适配与测试范围；实机验收单独记录，不能由接口注解或单元测试推断已通过实机验证。
+
+#### 资源
+
+| 资源 URI | 用途 |
+|---|---|
+| `turboism://active/document` | 活动项目、文档、模型、选择状态、工作区和主题快照。 |
+| `turboism://active/model/overview` | 紧凑的活动模型和选择状态概览。 |
+| `turboism://active/model/hierarchy` | 活动模型对象层级结构。 |
+| `turboism://active/model/clip-masks` | 活动模型 ArtMesh 剪切蒙版记录。 |
+| `turboism://active/model/parameters` | 实际的活动模型参数状态。 |
+| `turboism://active/model/statistics` | 结构、几何体、纹理、蒙版和可选离屏计数。 |
+| `turboism://active/model/textures` | 不含路径或字节的原始图像、模型图像组和纹理图集元数据。 |
+| `turboism://active/model/parameter-bindings` | 活动模型的聚合参数绑定状态。 |
+| `turboism://active/document/history` | 原生撤销可用性、条目、世代、修订版本和位置。 |
+| `turboism://environment/cubism-core` | 已接受的 Cubism Core 版本和公开能力标志。 |
+| `turboism://environment/workspace` | 当前和可用工作区及其类型化可用性。 |
+| `turboism://environment/workspace/layout` | 具有类型化可用性的有序只读停靠布局树。 |
+| `turboism://environment/diagnostics` | 有界且路径已脱敏的 Turboism 启动诊断问题。 |
+| `turboism://environment/runtime-diagnostics` | 最近的、有界且已净化的 MCP 运行时结果。 |
+| `turboism://host/editor-commands` | 当前可用的受支持 Editor 命令和类型化请求架构。 |
+
+资源是某一时刻的快照。服务器当前不声明订阅或资源更新通知。
+
+工作区和布局资源可能成功返回 `availability: "UNAVAILABLE"`，并附带诊断代码。这是一种类型化的宿主状态，不同于针对权限拒绝（`-32001`）、资源不存在（`-32002`）、不受支持的能力（`-32003`）、超时（`-32004`）或取消（`-32800`）的 JSON-RPC 错误。
+
+#### 资源模板
+
+- `turboism://active/model/parameters/{parameterId}`
+- `turboism://active/model/parameters/{parameterId}/bindings`
+
+#### 提示词
+
+- `inspect_active_document`
+- `edit_model_structure`
+- `normalize_parameters`
+- `repair_parameter_bindings`
+- `recover_document_history`
+- `run_editor_command`
+- `diagnose_environment`
+- `inspect_model_diagnostics`
+
+提示词不接受参数。两个诊断提示词明确禁止变更操作。
+
+## 功能能力
+
+### 声明的能力
+
+| 能力 | 对用户的作用 |
+|---|---|
+| `mcp.streamable-http` | 在数字回环接口上提供令牌门控的 MCP Streamable HTTP 服务（写操作需 Bearer）。 |
+| `mcp.tools` | 发布十一个类型化工具工作流。 |
+| `mcp.resources` | 发布静态和模板化 JSON 资源。 |
+| `mcp.prompts` | 发布由用户控制的工作流提示词。 |
+| `cubism.workspace.read` | 读取类型化工作区状态和停靠布局快照。 |
+| `cubism.model.objects.read` | 检查受支持的模型对象。 |
+| `cubism.model.objects.write` | 创建、重命名、重新设定父级和删除受支持的模型对象。 |
+| `cubism.parameters.read` | 读取活动模型参数。 |
+| `cubism.parameters.write` | 应用类型化的参数值和定义操作。 |
+| `cubism.parameter-bindings.read` | 读取参数绑定。 |
+| `cubism.parameter-bindings.write` | 应用类型化的绑定操作和原生原子传输。 |
+| `cubism.history.read` | 读取原生撤销历史。 |
+| `cubism.history.write` | 使用世代和修订版本防护移动原生撤销历史。 |
+| `cubism.editor-commands.execute` | 执行有界的受支持 Editor 命令界面。 |
+
+## 权限
+
+| 权限 | 作用域 | 请求原因 |
+|---|---|---|
+| `turboism.cubism.model.read` | `application` | 读取活动模型对象、Core 元数据、统计信息和纹理元数据。 |
+| `turboism.cubism.parameter.read` | `application` | 为工具面声明参数读取意图；实际参数读取在运行时由上方的模型读取权限强制执行。 |
+| `turboism.cubism.project.read` | `application` | 读取活动项目、工作区、布局和主题状态。 |
+| `turboism.cubism.model.write` | `application` | 应用类型化的模型、参数、绑定、历史记录和模型设置写入。 |
+| `turboism.file.read` | `application` | 在发布 loopback 端点前校验 MCP 连接文件元数据（存在性、所有者、符号链接检查）。 |
+| `turboism.file.write` | `application` | 允许直接 Editor `SAVE` 命令，并向 MCP 状态目录写入仅属主可读的 loopback 连接文件。 |
+| `turboism.network.fetch` | `application` | 允许类型化的外部应用程序设置命令，并绑定受 Origin 防护的 loopback HTTP 传输。 |
+| `turboism.process.run` | `application` | 允许类型化的外部应用程序设置命令。 |
+| `turboism.mcp.connection.publish` | `application` | 通过进程内运行时交换，将当前回环端点发布给已获权限批准的自动化插件。 |
+| `turboism.action.register` | `application` | 注册打开本地 MCP 连接窗口的操作。 |
+| `turboism.ui.menu.contribute` | `application` | 在 Turboism 菜单中添加 **MCP 连接**。 |
+
+诊断扩展不会新增 `host.unsafe`、性能、文件读取、配置、事件或 UI 变更权限。
+
+## 隐私与数据
+
+### 网络
+
+服务器仅监听 `127.0.0.1`。请求的 `Host` 头必须是回环地址（`127.0.0.1`、`localhost` 或 `[::1]`，可带 `:port`），并满足回环来源、MCP 协议与会话、1 MiB 正文上限和速率限制；写操作工具调用与会话关闭还要求 `Authorization: Bearer <令牌>`（即 `mcp.token` 的内容），只读方法无需凭据。设置系统属性 `turboism.mcp.requireAuthForRead=true` 可将 Bearer 要求扩展到所有 `tools/call`（包括读操作工具）。它并非为远程访问而设计。
+
+### 本地数据
+
+插件仅将连接元数据、每用户 Bearer 令牌和 stdio 桥接源文件写入插件状态存储，均以仅所有者权限发布。在 POSIX 系统上，它会尝试设置仅所有者权限。诊断和模型资源不会公开原始文件系统路径、原生宿主对象或图像字节。
+
+`turboism://environment/diagnostics` 会省略 `DiagnosticReport.Problem.path()`，限制问题列表，将消息转换为单行，限制消息长度，并脱敏 Unix 路径、Windows 路径和 `file:` URI。
+
+### 遥测
+
+本插件不会发送遥测数据。插件生命周期和失败记录可能会出现在 Turboism 的会话日志和 Cubism 的宿主日志中，并附带插件 ID。
+
+## 状态与限制
+
+- **状态：** 预览。
+- 稳定默认端口为 `43123`。仅在显式设置 `turboism.mcp.port=0` 时选择临时端口。`turboism.mcp.requestsPerMinute` 是高级速率限制系统属性。`turboism.mcp.requireAuthForRead`（`true`/`false`，默认 `false`）使读操作 `tools/call` 同样需要 Bearer 令牌。
+- 未实现 GET SSE、资源订阅、列表变更通知、进度通知和 MCP Tasks。
+- 工作区切换和默认布局变更被有意设为不可用，因为运行时当前以 `turboism.host.unsafe` 对它们进行门控。
+- 在 MCP 会话无需接受原始路径即可获得真实 `UserFileHandle` 授权之前，`EditorFileCommandRequest`、导入/导出、另存为、备份和其他基于句柄的文件工作流始终不可用。
+- 不公开通用 SDK 调用、反射、任意原生成员、shell 执行、原始路径、对话框自动化和生命周期注册 API。
+- 性能采样、画布/配置文件、物理/动画、纹理像素导入及通过 MCP 应用图集布局、屏幕截图和二进制资源仍是独立的未来能力，具有各自的权限和精确宿主证据要求。
+- 删除操作具有破坏性。默认会拒绝被引用的对象；必须显式请求级联。
+
+## 故障排除
+
+| 症状 | 检查事项 |
+|---|---|
+| MCP 客户端无法连接 | 打开 **Turboism → MCP 连接**，确认进程正在运行，并使用窗口显示的精确回环地址。如果端口 `43123` 被占用，请停止冲突进程或设置显式高级端口覆盖项。 |
+| 请求在分派前被拒绝 | 检查方法、来源、会话、MCP 协议版本、正文大小、内容类型和速率限制。 |
+| 资源返回 `UNAVAILABLE` | 检查活动文档/模型状态和精确宿主能力准入；不要将其视为空的成功值。 |
+| 资源返回权限被拒绝 | 检查插件描述符授权以及上文命名的特定运行时权限。 |
+
+## 支持与许可证
+
+- **项目网站：** [https://turboism.dev](https://turboism.dev)
+- **发布者：** Turboism Contributors
+- **许可证：** Project License
+- **插件 ID：** `dev.turboism.plugin.mcp`

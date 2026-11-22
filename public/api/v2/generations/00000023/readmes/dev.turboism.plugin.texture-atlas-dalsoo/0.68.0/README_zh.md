@@ -1,0 +1,201 @@
+---
+turboismReadmeSchema: 1
+pluginId: dev.turboism.plugin.texture-atlas-dalsoo
+version: 0.1.0
+kind: feature
+status: preview
+delivery: store-candidate
+category: modeling
+tags: texture-atlas, packing, polygon, auto-layout
+turboismApi: "[0.67.4,1.0.0)"
+requiresCubism: true
+interface: none
+---
+
+# Dalsoo 多边形排版算法
+
+> **Turboism 官方插件** · **状态：预览版**
+
+为 Cubism 纹理集工作流提供不规则多边形自动排版算法，风格对应 Cubism 5.4
+的轮廓打包。内核独立移植自 MIT 许可的 `whitegreen/Dalsoo-Bin-Packing`
+（提交 `bde2a3e`），见 `LICENSE` 与 `NOTICE`。本插件**不**内嵌、调用或
+宣称兼容 Cubism 5.4——它运行于当前支持的宿主（`5.2.00`–`5.3.04`）。
+
+| 项目 | 值 |
+|---|---|
+| 版本 | `0.1.0` |
+| 插件 ID | `dev.turboism.plugin.texture-atlas-dalsoo` |
+| 分类 | `modeling` |
+| 标签 | texture-atlas, packing, polygon, auto-layout |
+| 需要 Cubism | 是 |
+| 界面模式 | `none` |
+| 许可证 | MIT（内核移植） |
+
+## 功能概述
+
+- 支持完整纹理集一键排版，保持原始尺寸且不旋转。支持的宿主使用源网格轮廓紧密排版，轮廓不可用时回退到原图矩形；文件夹排版可跨文件夹合页，优先填充已有页面。
+- 在现有 MaxRects-BSSF 矩形后端之外注册 `dalsoo` 纹理集排版算法；矩形后端
+  保持不变。
+- 按真实凹轮廓打包（material-local `drawDataShapes`，经 verified selector
+  读取），不使用包围盒，也绝不使用凸包替代。
+- 支持 `NONE`、`QUARTER`（90° 步进）、`FREE`（18 个候选角度）旋转模式，
+  固定或自动统一倍率、页边距，以及逐项策略：参与、保持角度、保持倍率、
+  保持位置（固定项在可移动项之前作为障碍物放置）。
+- 以校验过的多边形计划服务原生自动排版回调；其他算法继续走既有矩形路径。
+- 计划先对照新鲜宿主状态校验（身份、重叠、边距、锁定），再经与矩形服务
+  相同的分阶段 affine/undo 边界写回；失败完整回滚。
+
+## 要求与兼容性
+
+- **SDK API 范围：** `[0.67.4,1.0.0)`。
+- **Cubism：** 仅精确审阅过的 Editor 构件 `5.2.00`–`5.3.04`。
+  Cubism 5.4 未被准入；SDK 契约中保留 `HOST_NATIVE` 后端槽位供未来正式
+  5.4 宿主 provider 使用。
+- **界面模式：** `none`。
+- **插件依赖：** 无。
+
+<!-- compatibility:begin -->
+**Cubism Editor 版本支持（自动生成）：** 全部审核版本（5.0.00–5.0.06, 5.1.00–5.1.03, 5.2.00–5.2.03, 5.3.00–5.3.04，共 20 个精确版本）.
+完整功能（审核版本）：5.2.00–5.2.03, 5.3.00–5.3.04。
+- 多边形图集布局 仅 5.2.00–5.3.04（更早版本 Cubism 本身无此功能）
+完整矩阵: [compatibility matrix](../../compatibility/cubism/plugins_zh.md)
+<!-- compatibility:end -->
+
+## 诚实的限制
+
+- **轮廓回退。** 宿主项无可用轮廓时回退到包围矩形，并在诊断中标记
+  `outlineSource=BOUNDS_FALLBACK`，不会伪装成轮廓打包。
+- **洞。** 轮廓中的洞在打包前被保守填充并报告（`holesFilled` 诊断）。
+  复杂自交拓扑可能退化为包围矩形。
+- **矩形路径降级。** 旧矩形排版契约无法表达任意角度；计划走该路径时
+  `FREE` 降级为 `QUARTER`——45° 放置绝不被舍入成虚假的 90° 旋转。
+- **性能。** 凹形打包比矩形慢数个数量级：100 个凹形项视旋转模式与质量
+  预设需数秒到数分钟；500 项需数分钟。`AUTO` 后端会把全部近矩形输入路
+  由到矩形路径。实测数据见
+  [离线证据](../../validation/texture-atlas-current-page/OFFLINE-POLYGON.md)
+  与原始 CSV；这些是合成离线数据，不是宿主计时。
+- **不宣称原生 5.4。** Cubism 5.4 alpha2 JAR 仅用于只读研究；其构件未被
+  准入，也未宣称任何原生对比数据。
+
+## 安装与启用
+
+本官方插件为**商店候选**，尚未上架。通过 Turboism 官方发布包安装后，在
+**插件管理**中启用。
+
+## 使用方法
+
+1. 打开 Cubism 纹理集编辑器，选择自动排版工作流。
+2. 选择 `dalsoo` 算法；选中时对话框会暴露下述打包控件，选择其他算法时
+   这些控件被禁用且其取值被忽略。
+3. 运行自动排版；插件先校验完整计划再应用，并报告诊断信息（后端、轮廓、
+   回退、洞、倍率、溢出）。
+
+## 对话框选项与持久化设置
+
+选中 `dalsoo` 时，自动排版对话框提供以下控件。所有取值经桥接写入持久化
+策略（`texture-atlas-dalsoo/layout.cfg`），在下一次运行时生效。
+
+| 对话框控件 | 设置键 | Cubism 5.4 对应 | 说明 |
+|---|---|---|---|
+| 旋转档位：`NONE` / `QUARTER` / `FREE` | `rotation` | 旋转粒度下拉 | `FREE` 按 18 个候选角（20° 步进）规划并经完整 affine 路径写回；矩形回退路径诚实降级为 `QUARTER`。 |
+| 锁定预设：`NONE` / `ALL` / `ANGLE` / `SCALE` / `ANGLE_SCALE` / `POS_ANGLE` | `lock-preset` | `AutoLayoutLock`（`fixPosition`/`fixRotate`/`fixScale`） | 全局默认层；显式逐项策略（`item-policies`）仍可覆盖。 |
+| 缩放模式：自动 / 固定 | `auto-scale`、`fixed-scale-percent` | 自动/固定缩放入口 | 固定缩放以百分比输入（1-800）；自动缩放绝不超过 1（`s = min(1, ·)`）。 |
+| 缩放容差 | `auto-scale-tolerance-permille` | `AUTO_SCALE_TOLERANCE` | 缩放搜索的相对步进下界；默认 `0.005`（按千分比存储）。 |
+| 缩放最大尝试 | `auto-scale-max-try` | `AUTO_SCALE_MAX_TRY` | 尝试上限；`0` 表示按质量档推导（`FAST` 8、`BALANCED` 12、`DENSE` 20）。 |
+| 内核：Abey / Dalalah | `use-abey` | - | 规划器使用的 Dalsoo 内核变体。 |
+| 并行搜索 | `parallel` | - | 确定性并行变体；由算法的 `supportsParallel` 能力声明门控。 |
+
+Cubism 5.4 的纹理压缩预设（`PRESET_COMPRESSION`、`IMAGE_QUALITY`、
+`CUSTOM`）与打包正交，本插件有意不实现。
+
+默认值保持改动前行为：旋转 `QUARTER`、锁定预设 `NONE`、自动缩放
+（容差 `0.005`）、按质量档推导的尝试上限、Abey 内核、串行规划。
+
+## Geometry500：原生、Dalsoo 与 BSSF 对比（2026-10-19）
+
+Cubism 5.3.03、DW-Proton / `:0` 环境，同一份 500 张 Geometry 样例，
+框架、插件与探针构件完全一致。每种算法各用新宿主运行一次，串行执行，
+纹理页 8192×8192、间距 3、网格模式、自动缩放并允许旋转；
+Dalsoo 使用 `QUARTER` 旋转。
+
+| 算法 | 排布方法耗时（秒） | 点击确定 → 进度窗口关闭（秒） |
+| --- | ---: | ---: |
+| 原生 | 192.94 | 193.16 |
+| Dalsoo | 12.20 | 12.51 |
+| MaxRects-BSSF | **0.20** | **0.45** |
+
+按方法耗时，Dalsoo 比原生快约 **15.8 倍**，BSSF 比 Dalsoo 快约 **60.5 倍**
+（按界面耗时为 27.6 倍）。三者均以 100% 缩放放入全部 500 张图像，
+无重叠、越界或溢出，LayerRef 变换一致；宿主身份、样例不变、
+正常退出与安全清理检查全部通过。
+
+以上各测一次，包含测试探针开销，不是中位数或普遍性能保证。
+界面耗时包含原生 / Dalsoo / BSSF 分别 12.28 / 18.30 / 28.25 ms 的输入探针开销，
+不含模型加载及窗口关闭后的输出校验。Dalsoo 读取了 500 个宿主轮廓，
+无包围盒回退（500 环、2000 顶点）；该样例不代表复杂凹形或 `FREE`
+旋转性能，也不证明排布密度最优。
+详见[测量报告与任务记录](../../validation/texture-atlas-current-page/HOST-GEOMETRY500-THREE-WAY.md)
+及[原始数据](../../validation/texture-atlas-current-page/host-geometry500-three-way-samples.csv)。
+
+## 功能能力
+
+| 声明的能力 | 用户效果 |
+|---|---|
+| `cubism.texture-atlas.layout` | 在审阅过的编辑器服务可用时注册并应用多边形排版算法。 |
+
+## 权限
+
+| 权限 | 范围 | 申请原因 |
+|---|---|---|
+| `turboism.cubism.model.read` | `application` | 读取图集项轮廓、已签发变换与页面状态。 |
+| `turboism.cubism.model.write` | `application` | 经宿主 affine/undo 边界应用校验过的多边形排版计划。 |
+| `turboism.config.plugin.read` | `application` | 恢复多边形排版设置与逐项策略。 |
+| `turboism.config.plugin.write` | `application` | 持久化多边形排版设置与逐项策略。 |
+
+## 隐私与数据
+
+### 网络
+
+不发起任何网络连接。
+
+### 本地数据
+
+排版设置与逐项策略存于插件配置。仅在工作流运行时读写活动纹理集状态。
+
+### 遥测
+
+本插件不发送遥测。
+
+## 状态与限制
+
+- **状态：** 预览版。
+- 需要活动的纹理集编辑器会话与审阅过的模型读写服务。
+- 排版或应用失败会报告且不应用部分布局；MaxRects-BSSF 与原生算法仍可
+  作为回退。
+- 已有 Cubism 5.2.03、5.3.02、5.3.03 的真实宿主证据：54 次排版矩阵
+  包含 18 次 Dalsoo 调用，均完整放入、结果有限且位于页内，并确认插件实际
+  接管；优化后另在 5.3.03 复测了三例。见[宿主性能记录](../../validation/texture-atlas-current-page/HOST-PERF-MATRIX.md)。
+  这些测量不代表所有支持宿主上的全部选项、撤销/重做及保存重开场景均已验收。
+
+## 故障排除
+
+| 症状 | 检查项 |
+|---|---|
+| 没有 `dalsoo` 选项 | 确认插件已启用且宿主暴露纹理集排版能力。 |
+| 项按矩形打包 | 宿主轮廓源可能不可用；检查诊断中的 `BOUNDS_FALLBACK`。 |
+| 排版缓慢 | 凹形打包代价高；降低质量预设、改用 `QUARTER`/`NONE`，或对近矩形输入选 `AUTO`/矩形后端。 |
+| 排版未应用 | 查看 Turboism 日志中的校验失败；计划是原子拒绝的。 |
+
+## 更新日志
+
+### 0.1.0
+
+- 初始版本发布。
+
+## 支持与许可证
+
+- **项目网站：** [https://turboism.dev](https://turboism.dev)
+- **发布者：** Turboism Contributors
+- **许可证：** MIT；内核移植自 `whitegreen/Dalsoo-Bin-Packing`（见
+  `LICENSE`/`NOTICE`）
+- **插件 ID：** `dev.turboism.plugin.texture-atlas-dalsoo`

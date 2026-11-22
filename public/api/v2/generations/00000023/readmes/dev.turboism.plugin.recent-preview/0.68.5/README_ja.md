@@ -1,0 +1,130 @@
+---
+turboismReadmeSchema: 1
+pluginId: dev.turboism.plugin.recent-preview
+version: 0.68.5
+kind: feature
+status: preview
+delivery: store-candidate
+category: workflow
+tags: recent-files, preview, navigation
+turboismApi: "[0.70.1,)"
+requiresCubism: true
+interface: swing
+---
+
+# 最近使用したファイルのプレビュープラグイン
+
+> **Turboism 公式プラグイン** · **ステータス: プレビュー**
+
+サイズが制限されたサムネイルをキャプチャし、Cubism の Recent Files ホバーポップアップに表示します。
+
+| 項目 | 値 |
+|---|---|
+| バージョン | `0.68.5` |
+| プラグイン ID | `dev.turboism.plugin.recent-preview` |
+| カテゴリー | `workflow` |
+| タグ | recent-files, preview, navigation |
+| Cubism が必要 | はい |
+| インターフェース | `swing` |
+| ライセンス | プロジェクトライセンス |
+
+## 機能概要
+
+- サポート対象のプロジェクトを開くまたは保存する操作の後に、最大 300×300 のモデリングサーフェスのプレビューをキャプチャし、既存のポップアップサイズ内に表示します。
+- 実行中および変更のないキャプチャを重複排除し、キャッシュ済みのコンテンツを Recent Files のホバー UI に提供します。
+- 不透明な最近使用したファイル ID と、パスを含まないキャッシュインデックスを使用します。
+
+## 要件と互換性
+
+- **SDK API 範囲:** `[0.70.1,)`。
+- **Cubism:** Cubism が必要です。Turboism は現在、正確にレビュー済みの Editor アーティファクト `5.0.00` から `5.3.04` を受け入れています。このプラグインは、宣言されたサービスと機能が利用可能な場合にのみ、各ホスト向け機能を公開します。
+- **インターフェースモード:** `swing`。
+- **プラグイン依存関係:** 宣言されていません。
+
+<!-- compatibility:begin -->
+**Cubism Editor バージョン対応（自動生成）：** 全審査済みバージョン（5.0.00–5.0.06, 5.1.00–5.1.03, 5.2.00–5.2.03, 5.3.00–5.3.05、21 個の正確なバージョン）.
+全機能（審査済みバージョン）：5.0.00–5.0.06, 5.1.00–5.1.03, 5.2.00–5.2.03, 5.3.00–5.3.05。
+完全なマトリクス: [compatibility matrix](../../compatibility/cubism/plugins_ja.md)
+<!-- compatibility:end -->
+
+## インストールと有効化
+
+この公式プラグインは**ストア候補**であり、まだ公開済みのストア掲載ではありません。マーケットプレイスで公開されるまで、Turboism の公式リリースパッケージからインストールし、**Plugin Management** で有効にしてください。このワークフローが不要な場合は、同じウィンドウから無効化またはアンインストールしてください。
+
+## 使い方
+
+1. プラグインが有効な状態で Cubism プロジェクトを開くか保存します。
+2. Cubism の Recent Files 表示を開き、最近使用した項目にカーソルを合わせます。
+3. ポップアップにキャッシュ済みのサムネイルと利用可能な表示メタデータが表示されます。古い、または利用できないキャプチャは安全にスキップされます。
+
+## プラグイン間イベント契約
+
+本プラグインは公開イベントを 2 つ（各契約 `1.0.0`）提供します。
+
+- `thumbnail.captured`：SDK 所有のペイロード `RecentPreviewCapturedEvent` には、不透明な最近ファイル ID、表示名、キャプチャした `ScreenshotImage`、そのまま利用できるサムネイル `PanelView` が含まれます。
+- `thumbnail.deleted`：SDK 所有のペイロード `RecentPreviewDeletedEvent` は不透明な最近ファイル ID のみを含み、キャッシュ済みサムネイルの削除を通知します。
+
+利用側プラグインは `dev.turboism.plugin.recent-preview` への依存（`ordering: after`）とイベントのインポートを宣言し、`turboism.event.subscribe` 権限を追加します。購読は `@SubscribeEvent` または `context.eventBus().subscribe(RecentPreviewCapturedEvent.class, ...)` で行います。`event.image().png()` で画像ストリーム、`event.thumbnail()` で `PanelView` 部品を取得できます。イベントはライブ配信のみで、キャプチャ後に購読を開始したプラグインへ過去の画像を再生しません。
+
+## 機能
+
+プラグインマニフェストには機能は宣言されていません。
+
+## 権限
+
+| 権限 | スコープ | 要求理由 |
+|---|---|---|
+| `turboism.cubism.model.observe` | `application` | モデルのオープン/保存ライフサイクルコールバックを受け取り、範囲を制限したプレビューキャプチャを起動します。未宣言の場合、ライフサイクルレジストリがこれらをフィルタリングします。 |
+| `turboism.cubism.recent-file.read` | `application` | 不透明なファイル ID をプレビューキャッシュのキーとして使用するため、ホストの Recent Files プロジェクションを一覧表示します。 |
+| `turboism.ui.viewport.read` | `application` | 最近使用したファイル用に、サイズが制限されたモデリングサーフェスのプレビューサムネイルをキャプチャします。 |
+| `turboism.ui.recent-preview.contribute` | `application` | ホストの Recent Files ホバーブリッジにサムネイルポップアップのコンテンツを提供します。 |
+| `turboism.file.read` | `application` | プラグインに限定されたキャッシュストレージから、キャッシュ済みプレビュー PNG を読み取ります。 |
+| `turboism.file.write` | `application` | プレビュー PNG とパスを含まないインデックスを、プラグインに限定されたキャッシュストレージへアトミックに書き込みます。 |
+| `turboism.event.publish` | `application` | 公開 `thumbnail.captured`/`thumbnail.deleted` イベントをインポートした依存プラグインへ、確定済みサムネイルと削除結果を配信します。 |
+
+## プライバシーとデータ
+
+### ネットワーク
+
+ネットワーク接続は行いません。
+
+### ローカルデータ
+
+プラグインキャッシュパス `recent-preview/images/` および `recent-preview/index/` の下に、サイズが制限された PNG サムネイルとパスを含まないインデックスエントリーを保存します。キーは不透明な最近使用したファイル ID から導出された SHA-256 値です。インデックスエントリーには意図的にファイルパスが含まれません。ディスクキャッシュは、外部からキャッシュデータを削除するまで無効化後も残ります。
+
+### テレメトリー
+
+このプラグインはテレメトリーを送信しません。
+
+プラグイン ID が付加されたプラグインのライフサイクル記録と障害記録が、Turboism のセッションログおよび Cubism のホストログに記録されることがあります。
+
+## 状態と制限
+
+- **ステータス:** プレビュー。
+- 最近使用したファイル、ビューポートスクリーンショット、および最近のプレビュー拡張サービスが必要です。
+- キャプチャは非同期でサイズが制限されています。プロジェクトの変更、古い ID、無効な PNG、または利用できないビューポートがあると、結果はスキップされます。
+
+## トラブルシューティング
+
+| 症状 | 確認事項 |
+|---|---|
+| ホバーポップアップにサムネイルがない | プロジェクトを開くか保存してキャプチャを待ち、ビューポートと最近使用したファイルのサービスが利用可能であることを確認してください。 |
+| 古いサムネイルが残る | プロジェクトを再度開くか保存して調整を実行してください。無効または古いキャッシュエントリーは無視されます。 |
+| キャッシュが増大する | Turboism のストレージ管理でこのプラグインのキャッシュを消去するか、Turboism を停止中にプラグインキャッシュを削除してください。 |
+
+## 変更履歴
+
+### 0.68.1
+
+- リプレイ契約（`RecentPreviewCacheService$ReplayHandler`、`requestReplay()`）が `[0.70.1,)` から提供されたため、最低 Turboism API を `[0.70.1,)` に引き上げました。
+
+### 0.1.0
+
+- 初回リリース。
+
+## サポートとライセンス
+
+- **プロジェクトウェブサイト:** [https://turboism.dev](https://turboism.dev)
+- **発行者:** Turboism Contributors
+- **ライセンス:** プロジェクトライセンス
+- **プラグイン ID:** `dev.turboism.plugin.recent-preview`

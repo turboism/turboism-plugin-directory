@@ -27,6 +27,7 @@ import {
 } from "@/lib/directory-view.mjs";
 import { useLanguage } from "@/components/language-provider";
 import { renderSafeReadmeMarkdown, selectLocalizedReadme } from "@/lib/readme-renderer";
+import { PLUGIN_CARD_MAX_TILT_DEG, applyTiltVariables, resetTiltVariables } from "@/lib/tilt-3d";
 
 const REPORT_URL =
   "https://github.com/turboism/turboism-plugin-directory/issues/new?template=directory-report.md";
@@ -377,7 +378,7 @@ export function DirectoryBrowser({
             selectedLicense={selectedLicense}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="tb-plugin-grid-3d grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPlugins.map((plugin) => (
               <PluginCard key={plugin.id} plugin={plugin} frameworkChannels={frameworkChannels} />
             ))}
@@ -479,7 +480,12 @@ function PluginCard({
       : "text-violet-700 bg-violet-50 border-violet-200";
 
   return (
-    <article className="group flex flex-col p-6 rounded-2xl border border-[var(--tb-border)] bg-white shadow-sm hover:shadow-md hover:border-[var(--tb-violet)]/60 transition-all">
+    <article
+      className="tb-plugin-card-3d group flex flex-col p-6 rounded-2xl border border-[var(--tb-border)] bg-white"
+      onPointerMove={(event) => applyTiltVariables(event.currentTarget, event, PLUGIN_CARD_MAX_TILT_DEG)}
+      onPointerLeave={(event) => resetTiltVariables(event.currentTarget)}
+    >
+      <span className="tb-plugin-card-sheen" aria-hidden="true" />
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-2">
         {requirement && (
           <span

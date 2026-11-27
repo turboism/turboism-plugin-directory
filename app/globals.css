@@ -3,3 +3,62 @@
 @layer base { body { margin: 0; min-height: 100vh; } }
 
 .tb-directory-main>section{padding-top:1.5rem}
+
+.tb-plugin-grid-3d {
+  perspective: 1800px;
+}
+
+.tb-plugin-card-3d {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx)) rotateY(var(--ry)) translateZ(0);
+  box-shadow: 0 2px 8px -4px rgba(48, 41, 75, 0.07);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease,
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.tb-plugin-card-3d:hover {
+  border-color: var(--tb-violet);
+  transform: rotateX(var(--rx)) rotateY(var(--ry)) translateY(-2px) translateZ(3px);
+  box-shadow:
+    0 2px 0 rgba(106, 90, 205, 0.08),
+    0 10px 20px -12px rgba(48, 41, 75, 0.13);
+}
+
+.tb-plugin-card-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    220px circle at var(--mx) var(--my),
+    rgba(106, 90, 205, 0.05),
+    rgba(238, 232, 170, 0.06) 44%,
+    transparent 74%
+  );
+  transition: opacity 0.2s ease;
+}
+
+.tb-plugin-card-3d:hover .tb-plugin-card-sheen {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-plugin-card-3d,
+  .tb-plugin-card-sheen {
+    transition: none;
+  }
+
+  .tb-plugin-card-3d:hover {
+    transform: none;
+  }
+}
